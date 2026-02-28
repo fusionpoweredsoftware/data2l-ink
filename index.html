@@ -462,6 +462,30 @@
       z-index: 1;
     }
 
+    /* ── Hierarchy callout ───────────────────────────────────── */
+    .hierarchy-callout {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius-lg);
+      padding: 24px 28px;
+      margin-bottom: 28px;
+    }
+    .hc-icon { font-size: 1.8rem; flex-shrink: 0; margin-top: 2px; }
+    .hierarchy-callout h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+    .hierarchy-callout p { font-size: 0.88rem; color: var(--text-dim); line-height: 1.6; }
+    .hierarchy-callout code {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--accent-bright);
+      background: var(--surface-2);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
     /* ── Animations ──────────────────────────────────────── */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(20px); }
@@ -498,7 +522,7 @@
     <section class="hero">
       <div class="hero-badge anim">⚡ <span>Simple.</span> Fast. Yours.</div>
       <h1 class="anim anim-d1">Store data,<br><em>not headaches.</em></h1>
-      <p class="anim anim-d2">A cloud key-value store for developers who want to ship fast. No databases, no config, no overhead. Just PUT your data in, GET it out.</p>
+      <p class="anim anim-d2">A cloud storage API for developers who want to ship fast. Flat key-value for simple data, hierarchical file storage for structured projects. No databases, no config, no overhead.</p>
       <div class="hero-actions anim anim-d3">
         <button class="btn btn-primary" onclick="showAuth('signup')">Create free account →</button>
         <a class="btn btn-ghost" href="#api-examples">See the API</a>
@@ -506,8 +530,8 @@
     </section>
 
     <section class="code-section" id="api-examples">
-      <h2 class="anim">Four endpoints. That's it.</h2>
-      <p class="subtitle anim anim-d1">Everything you need, nothing you don't.</p>
+      <h2 class="anim">Two APIs. Zero headaches.</h2>
+      <p class="subtitle anim anim-d1">A flat key-value store for simple data, plus a full hierarchical file system for structured projects.</p>
       <div class="code-grid anim anim-d2">
         <div class="code-card">
           <div class="code-card-header">
@@ -577,8 +601,105 @@ fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
       </div>
     </section>
 
+    <section class="code-section" id="jjfs-examples">
+      <h2 class="anim">File System API (JJFS)</h2>
+      <p class="subtitle anim anim-d1">Store data as a virtual file tree — nested directories, POSIX paths, surgical in-place edits. One endpoint handles everything.</p>
+      <div class="code-grid anim anim-d2">
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-put">POST</span>
+            <span class="endpoint">/api/fs/execute — write a file</span>
+          </div>
+          <pre><span class="comment">// Create or overwrite a file</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/execute'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
+    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+  },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">type</span>: <span class="str">'JJFS_WRITE'</span>,
+    <span class="key">target</span>: <span class="str">'default:/notes/todo.md'</span>,
+    <span class="key">content</span>: <span class="str">'# My Notes\n- Item 1'</span>
+  })
+})
+<span class="comment">// → { success: true, result: "Created: default:/notes/todo.md" }</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-get">POST</span>
+            <span class="endpoint">/api/fs/execute — read a file or dir</span>
+          </div>
+          <pre><span class="comment">// Read a file</span>
+{ <span class="key">type</span>: <span class="str">'JJFS_READ'</span>, <span class="key">target</span>: <span class="str">'default:/notes/todo.md'</span> }
+<span class="comment">// → { success: true, result: "# My Notes\n- Item 1" }</span>
+
+<span class="comment">// Read lines 10–20 only</span>
+{ <span class="key">type</span>: <span class="str">'JJFS_READ'</span>, <span class="key">target</span>: <span class="str">'default:/notes/todo.md:10:20'</span> }
+
+<span class="comment">// List a directory</span>
+{ <span class="key">type</span>: <span class="str">'JJFS_READ'</span>, <span class="key">target</span>: <span class="str">'default:/notes'</span> }
+<span class="comment">// → { success: true, result: "todo.md\narchive/" }</span>
+
+<span class="comment">// Structured browse (GET, for UIs)</span>
+GET <span class="str">/api/fs/browse?workspace=default&amp;path=/notes</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-put">POST</span>
+            <span class="endpoint">/api/fs/execute — surgical edit</span>
+          </div>
+          <pre><span class="comment">// Replace exactly one occurrence — must be unique</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/execute'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, ... },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">type</span>: <span class="str">'JJFS_EDIT'</span>,
+    <span class="key">target</span>: <span class="str">'default:/notes/todo.md'</span>,
+    <span class="key">content</span>: JSON.stringify({
+      <span class="key">search</span>: <span class="str">'- Item 1'</span>,
+      <span class="key">replace</span>: <span class="str">'- Item 1\n- Item 2'</span>
+    })
+  })
+})
+<span class="comment">// → { success: true, result: "Edited: default:/notes/todo.md" }</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-delete">POST</span>
+            <span class="endpoint">/api/fs/execute — move, copy, delete</span>
+          </div>
+          <pre><span class="comment">// Move a file</span>
+{ <span class="key">type</span>: <span class="str">'JJFS_MOVE'</span>,
+  <span class="key">target</span>: <span class="str">'default:/notes/todo.md'</span>,
+  <span class="key">content</span>: <span class="str">'/archive/todo.md'</span> }
+
+<span class="comment">// Copy a file</span>
+{ <span class="key">type</span>: <span class="str">'JJFS_COPY'</span>,
+  <span class="key">target</span>: <span class="str">'default:/template.md'</span>,
+  <span class="key">content</span>: <span class="str">'/notes/new.md'</span> }
+
+<span class="comment">// Delete a file or directory</span>
+{ <span class="key">type</span>: <span class="str">'JJFS_DELETE'</span>,
+  <span class="key">target</span>: <span class="str">'default:/archive'</span> }
+
+<span class="comment">// Manage workspaces</span>
+POST  <span class="str">/api/fs/workspaces</span>   { <span class="key">name</span>: <span class="str">'my-project'</span> }
+GET   <span class="str">/api/fs/workspaces</span>
+DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
+        </div>
+      </div>
+    </section>
+
     <section class="features">
       <h2>Built for speed, not complexity.</h2>
+      <div class="hierarchy-callout">
+        <div class="hc-icon">🗂️</div>
+        <div>
+          <h3>Hierarchy makes data navigable</h3>
+          <p>The flat key-value store is great for simple lookups. But as your data grows, scanning a list of keys gets painful. JJFS lets you organise data as a real file tree — <code>default:/config/db.json</code>, <code>default:/users/profile.md</code>, <code>my-project:/src/app.js</code> — so finding things is as natural as navigating a project folder. No more guessing key names.</p>
+        </div>
+      </div>
       <div class="feature-grid">
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(108,92,231,0.12); color: var(--accent-bright);">⚡</div>
@@ -912,7 +1033,9 @@ fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
             <div class="key-meta">
               <span>Created ${created}</span>
               <span>Last used: ${lastUsed}</span>
-              <span>${k.entryCount} entries</span>
+              <span>${k.entryCount} KV entries</span>
+              <span>${k.wsCount || 0} workspace${(k.wsCount || 0) !== 1 ? 's' : ''}</span>
+              <span>${k.fsFileCount || 0} FS file${(k.fsFileCount || 0) !== 1 ? 's' : ''}</span>
             </div>
           </div>
           <div class="key-actions">
