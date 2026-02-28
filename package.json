@@ -1,0 +1,11 @@
+{
+  "name": "data2link",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Cloud key-value storage API — data2l.ink",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs"
+  }
+}

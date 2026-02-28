@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>data2l.ink — Cloud Key-Value Storage</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #08090c;
+      --surface: #0f1117;
+      --surface-2: #161821;
+      --surface-3: #1c1f2b;
+      --border: #252836;
+      --border-bright: #353950;
+      --text: #e4e6f0;
+      --text-dim: #8a8ea3;
+      --text-faint: #565972;
+      --accent: #6c5ce7;
+      --accent-bright: #a18aff;
+      --accent-glow: rgba(108, 92, 231, 0.25);
+      --green: #00d2a0;
+      --green-dim: rgba(0, 210, 160, 0.15);
+      --red: #ff6b81;
+      --red-dim: rgba(255, 107, 129, 0.15);
+      --yellow: #ffc048;
+      --radius: 10px;
+      --radius-lg: 16px;
+      --font-body: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background texture ─────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -20%, rgba(108, 92, 231, 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(0, 210, 160, 0.04), transparent);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Utility ────────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+    .hidden { display: none !important; }
+
+    /* ── Nav ─────────────────────────────────────────────── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0;
+    }
+    .logo {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--accent-bright); }
+    .nav-links { display: flex; gap: 8px; align-items: center; }
+
+    /* ── Buttons ─────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #7b6bf0; box-shadow: 0 4px 20px var(--accent-glow); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--border-bright); background: var(--surface); }
+    .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,107,129,0.2); }
+    .btn-danger:hover { background: rgba(255,107,129,0.25); }
+    .btn-sm { padding: 6px 14px; font-size: 0.82rem; }
+    .btn-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,210,160,0.2); }
+    .btn-green:hover { background: rgba(0,210,160,0.25); }
+
+    /* ── Hero ────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 100px 0 80px;
+    }
+    .hero-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      margin-bottom: 28px;
+      font-family: var(--font-mono);
+    }
+    .hero-badge span { color: var(--green); }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.2rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      letter-spacing: -1.5px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--accent-bright), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--text-dim);
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Code example ───────────────────────────────────── */
+    .code-section { padding: 60px 0 80px; }
+    .code-section h2 {
+      text-align: center;
+      font-size: 1.6rem;
+      margin-bottom: 8px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .code-section .subtitle {
+      text-align: center;
+      color: var(--text-dim);
+      margin-bottom: 40px;
+      font-size: 1rem;
+    }
+    .code-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 700px) { .code-grid { grid-template-columns: 1fr; } }
+    .code-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .code-card-header {
+      padding: 14px 20px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .code-card-header .method {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .method-put { background: rgba(255, 192, 72, 0.15); color: var(--yellow); }
+    .method-get { background: var(--green-dim); color: var(--green); }
+    .method-delete { background: var(--red-dim); color: var(--red); }
+    .method-list { background: rgba(108, 92, 231, 0.15); color: var(--accent-bright); }
+    .code-card-header .endpoint {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+    .code-card pre {
+      padding: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: var(--text-dim);
+      overflow-x: auto;
+    }
+    .code-card pre .key { color: var(--accent-bright); }
+    .code-card pre .str { color: var(--green); }
+    .code-card pre .comment { color: var(--text-faint); }
+
+    /* ── Features ────────────────────────────────────────── */
+    .features { padding: 40px 0 80px; }
+    .features h2 {
+      text-align: center;
+      font-size: 1.6rem;
+      margin-bottom: 40px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 700px) { .feature-grid { grid-template-columns: 1fr; } }
+    .feature-card {
+      padding: 28px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      transition: border-color 0.2s;
+    }
+    .feature-card:hover { border-color: var(--border-bright); }
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+    }
+    .feature-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+    .feature-card p { font-size: 0.88rem; color: var(--text-dim); line-height: 1.6; }
+
+    /* ── Auth forms ──────────────────────────────────────── */
+    .auth-section { padding: 80px 0; display: flex; justify-content: center; }
+    .auth-card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px 32px;
+    }
+    .auth-card h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
+    }
+    .auth-card .auth-subtitle {
+      color: var(--text-dim);
+      font-size: 0.92rem;
+      margin-bottom: 28px;
+    }
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.92rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus { border-color: var(--accent); }
+    .form-error { color: var(--red); font-size: 0.82rem; margin-top: 6px; display: none; }
+    .form-error.show { display: block; }
+    .auth-toggle {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.88rem;
+      color: var(--text-dim);
+    }
+    .auth-toggle a { color: var(--accent-bright); cursor: pointer; text-decoration: none; }
+    .auth-toggle a:hover { text-decoration: underline; }
+
+    /* ── Dashboard ───────────────────────────────────────── */
+    .dashboard { padding: 40px 0 80px; }
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .dash-header h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+    .dash-header .email-badge {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      background: var(--surface-2);
+      border-radius: 100px;
+      border: 1px solid var(--border);
+    }
+
+    .key-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+    .key-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      transition: border-color 0.2s;
+    }
+    .key-card:hover { border-color: var(--border-bright); }
+    .key-info { flex: 1; min-width: 200px; }
+    .key-label {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+    .key-value {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      background: var(--surface-2);
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-block;
+      cursor: pointer;
+      transition: color 0.2s;
+      position: relative;
+    }
+    .key-value:hover { color: var(--text); }
+    .key-value .copy-hint {
+      position: absolute;
+      top: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface-3);
+      border: 1px solid var(--border-bright);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .key-value:hover .copy-hint { opacity: 1; }
+    .key-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 0.8rem;
+      color: var(--text-faint);
+      margin-top: 8px;
+      font-family: var(--font-mono);
+    }
+    .key-actions { display: flex; gap: 8px; }
+
+    .create-key-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 32px;
+      align-items: flex-end;
+    }
+    .create-key-form .form-group { margin-bottom: 0; flex: 1; }
+
+    .new-key-reveal {
+      background: var(--green-dim);
+      border: 1px solid rgba(0,210,160,0.3);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+    }
+    .new-key-reveal .label { color: var(--green); font-weight: 600; margin-bottom: 6px; font-family: var(--font-body); }
+    .new-key-reveal .key-text { color: var(--text); word-break: break-all; }
+    .new-key-reveal .warning { color: var(--text-dim); font-size: 0.78rem; margin-top: 8px; font-family: var(--font-body); }
+
+    /* ── Data browser ───────────────────────────────────── */
+    .data-browser { margin-top: 40px; }
+    .data-browser h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 16px; }
+    .data-browser-select { margin-bottom: 16px; }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .data-table th, .data-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    .data-table th {
+      background: var(--surface-2);
+      font-weight: 600;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .data-table td {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+    .data-table td.key-col { color: var(--text); font-weight: 500; }
+    .data-table td.value-col {
+      max-width: 400px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-faint);
+    }
+    .empty-state .icon { font-size: 2rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.92rem; }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px 0;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--text-faint);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Animations ──────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .anim { animation: fadeUp 0.5s ease forwards; opacity: 0; }
+    .anim-d1 { animation-delay: 0.1s; }
+    .anim-d2 { animation-delay: 0.2s; }
+    .anim-d3 { animation-delay: 0.3s; }
+    .anim-d4 { animation-delay: 0.4s; }
+
+    /* ── Scrollbar ───────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <nav>
+    <a href="#" class="logo" onclick="goHome()">data2l<span>.ink</span></a>
+    <div class="nav-links" id="navLinks">
+      <button class="btn btn-ghost btn-sm" id="navLogin" onclick="showAuth('login')">Log in</button>
+      <button class="btn btn-primary btn-sm" id="navSignup" onclick="showAuth('signup')">Get started</button>
+      <span class="email-badge hidden" id="navEmail"></span>
+      <button class="btn btn-ghost btn-sm hidden" id="navDash" onclick="showDashboard()">Dashboard</button>
+      <button class="btn btn-ghost btn-sm hidden" id="navLogout" onclick="logout()">Log out</button>
+    </div>
+  </nav>
+
+  <!-- ═══════════════ LANDING PAGE ═══════════════ -->
+  <div id="landingPage">
+    <section class="hero">
+      <div class="hero-badge anim">⚡ <span>Simple.</span> Fast. Yours.</div>
+      <h1 class="anim anim-d1">Store data,<br><em>not headaches.</em></h1>
+      <p class="anim anim-d2">A cloud key-value store for developers who want to ship fast. No databases, no config, no overhead. Just PUT your data in, GET it out.</p>
+      <div class="hero-actions anim anim-d3">
+        <button class="btn btn-primary" onclick="showAuth('signup')">Create free account →</button>
+        <a class="btn btn-ghost" href="#api-examples">See the API</a>
+      </div>
+    </section>
+
+    <section class="code-section" id="api-examples">
+      <h2 class="anim">Four endpoints. That's it.</h2>
+      <p class="subtitle anim anim-d1">Everything you need, nothing you don't.</p>
+      <div class="code-grid anim anim-d2">
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-put">PUT</span>
+            <span class="endpoint">/api/data/:key</span>
+          </div>
+          <pre><span class="comment">// Store anything</span>
+fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
+  <span class="key">method</span>: <span class="str">'PUT'</span>,
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
+    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+  },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">value</span>: { <span class="key">users</span>: 42, <span class="key">status</span>: <span class="str">'live'</span> }
+  })
+})</pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-get">GET</span>
+            <span class="endpoint">/api/data/:key</span>
+          </div>
+          <pre><span class="comment">// Retrieve it</span>
+fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>
+  }
+})
+.then(<span class="key">r</span> => r.json())
+.then(<span class="key">data</span> => {
+  console.log(data.value)
+  <span class="comment">// → { users: 42, status: 'live' }</span>
+})</pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-list">GET</span>
+            <span class="endpoint">/api/data</span>
+          </div>
+          <pre><span class="comment">// List all your keys</span>
+fetch(<span class="str">'https://data2l.ink/api/data'</span>, {
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>
+  }
+})
+.then(<span class="key">r</span> => r.json())
+.then(<span class="key">data</span> => {
+  console.log(data.keys)
+  <span class="comment">// → ['myapp', 'config', ...]</span>
+})</pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-delete">DELETE</span>
+            <span class="endpoint">/api/data/:key</span>
+          </div>
+          <pre><span class="comment">// Remove a key</span>
+fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
+  <span class="key">method</span>: <span class="str">'DELETE'</span>,
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>
+  }
+})
+<span class="comment">// → { key: 'myapp', deleted: true }</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="features">
+      <h2>Built for speed, not complexity.</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(108,92,231,0.12); color: var(--accent-bright);">⚡</div>
+          <h3>In-memory speed</h3>
+          <p>Your data lives in RAM for instant access. Every mutation is persisted to disk so nothing is ever lost.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: var(--green-dim); color: var(--green);">🔑</div>
+          <h3>API key scoped</h3>
+          <p>Each key isolates your data. Create multiple keys for different projects — they never cross-contaminate.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(255,192,72,0.12); color: var(--yellow);">📦</div>
+          <h3>Store anything</h3>
+          <p>Strings, objects, arrays, nested structures — if it's JSON, it goes in. No schemas, no migrations.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: var(--red-dim); color: var(--red);">🌐</div>
+          <h3>CORS ready</h3>
+          <p>Call it from any frontend, any origin. Built-in CORS headers mean zero proxy headaches.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(108,92,231,0.12); color: var(--accent-bright);">🛡️</div>
+          <h3>Secure by default</h3>
+          <p>Passwords hashed with PBKDF2. API keys are long, random, and revocable at any time.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: var(--green-dim); color: var(--green);">🧩</div>
+          <h3>Zero dependencies</h3>
+          <p>Pure Node.js, no frameworks, no bloat. Runs anywhere that runs JavaScript.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══════════════ AUTH PAGE ═══════════════ -->
+  <div id="authPage" class="hidden">
+    <section class="auth-section">
+      <div class="auth-card anim">
+        <h2 id="authTitle">Create your account</h2>
+        <p class="auth-subtitle" id="authSubtitle">Start storing data in under a minute.</p>
+        <div id="authError" class="form-error"></div>
+        <form id="authForm" onsubmit="handleAuth(event)">
+          <div class="form-group">
+            <label for="authEmail">Email</label>
+            <input type="email" id="authEmail" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="authPassword">Password</label>
+            <input type="password" id="authPassword" placeholder="At least 8 characters" required minlength="8">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content: center;" id="authSubmit">Create account</button>
+        </form>
+        <div class="auth-toggle">
+          <span id="authToggleText">Already have an account?</span>
+          <a id="authToggleLink" onclick="toggleAuthMode()">Log in</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══════════════ DASHBOARD ═══════════════ -->
+  <div id="dashPage" class="hidden">
+    <section class="dashboard">
+      <div class="dash-header">
+        <h2>Your API Keys</h2>
+      </div>
+
+      <div id="newKeyReveal" class="new-key-reveal hidden">
+        <div class="label">✦ New API key created</div>
+        <div class="key-text" id="newKeyText"></div>
+        <div class="warning">Copy this key now — you can always see it in your dashboard, but it's best to save it somewhere safe.</div>
+      </div>
+
+      <div class="create-key-form">
+        <div class="form-group">
+          <label>Key label</label>
+          <input type="text" id="newKeyLabel" placeholder="e.g. My project, Production, Testing...">
+        </div>
+        <button class="btn btn-primary" onclick="createKey()">Generate key</button>
+      </div>
+
+      <div class="key-list" id="keyList">
+        <div class="empty-state">
+          <div class="icon">🔑</div>
+          <p>No API keys yet. Create one to get started.</p>
+        </div>
+      </div>
+
+      <div class="data-browser">
+        <h3>Data Browser</h3>
+        <div class="data-browser-select">
+          <div class="form-group">
+            <label>Select API key to browse</label>
+            <select id="browseKeySelect" onchange="browseData()">
+              <option value="">Choose a key...</option>
+            </select>
+          </div>
+        </div>
+        <div id="dataTableContainer">
+          <div class="empty-state">
+            <div class="icon">📦</div>
+            <p>Select an API key to browse its stored data.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<footer>
+  <div class="container">data2l.ink — cloud key-value storage</div>
+</footer>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────
+  let session = localStorage.getItem('d2l_session') || null;
+  let userEmail = localStorage.getItem('d2l_email') || null;
+  let authMode = 'signup';
+  let userKeys = [];
+
+  const API = ''; // relative — same origin
+
+  // ── Init ──────────────────────────────────────────────────────
+  (async function init() {
+    if (session) {
+      const ok = await checkSession();
+      if (ok) updateNavLoggedIn();
+    }
+  })();
+
+  async function checkSession() {
+    try {
+      const res = await fetch(`${API}/auth/me`, {
+        headers: { 'Cookie': `d2l_session=${session}` },
+        credentials: 'include',
+      });
+      // Since we can't easily set cookies from JS, we'll use a workaround
+      // We'll pass session in a custom header approach or just re-check
+      if (!res.ok) { clearSession(); return false; }
+      const data = await res.json();
+      userEmail = data.email;
+      return true;
+    } catch {
+      // If we can't reach the server yet in dev, keep session
+      return true;
+    }
+  }
+
+  function clearSession() {
+    session = null;
+    userEmail = null;
+    localStorage.removeItem('d2l_session');
+    localStorage.removeItem('d2l_email');
+  }
+
+  // ── Navigation ────────────────────────────────────────────────
+  function goHome() {
+    document.getElementById('landingPage').classList.remove('hidden');
+    document.getElementById('authPage').classList.add('hidden');
+    document.getElementById('dashPage').classList.add('hidden');
+  }
+
+  function showAuth(mode) {
+    authMode = mode;
+    document.getElementById('landingPage').classList.add('hidden');
+    document.getElementById('authPage').classList.remove('hidden');
+    document.getElementById('dashPage').classList.add('hidden');
+    updateAuthForm();
+  }
+
+  function showDashboard() {
+    if (!session) return showAuth('login');
+    document.getElementById('landingPage').classList.add('hidden');
+    document.getElementById('authPage').classList.add('hidden');
+    document.getElementById('dashPage').classList.remove('hidden');
+    loadKeys();
+  }
+
+  function updateNavLoggedIn() {
+    document.getElementById('navLogin').classList.add('hidden');
+    document.getElementById('navSignup').classList.add('hidden');
+    document.getElementById('navEmail').classList.remove('hidden');
+    document.getElementById('navEmail').textContent = userEmail;
+    document.getElementById('navDash').classList.remove('hidden');
+    document.getElementById('navLogout').classList.remove('hidden');
+  }
+
+  function updateNavLoggedOut() {
+    document.getElementById('navLogin').classList.remove('hidden');
+    document.getElementById('navSignup').classList.remove('hidden');
+    document.getElementById('navEmail').classList.add('hidden');
+    document.getElementById('navDash').classList.add('hidden');
+    document.getElementById('navLogout').classList.add('hidden');
+  }
+
+  function updateAuthForm() {
+    const isSignup = authMode === 'signup';
+    document.getElementById('authTitle').textContent = isSignup ? 'Create your account' : 'Welcome back';
+    document.getElementById('authSubtitle').textContent = isSignup ? 'Start storing data in under a minute.' : 'Log in to manage your keys and data.';
+    document.getElementById('authSubmit').textContent = isSignup ? 'Create account' : 'Log in';
+    document.getElementById('authToggleText').textContent = isSignup ? 'Already have an account? ' : "Don't have an account? ";
+    document.getElementById('authToggleLink').textContent = isSignup ? 'Log in' : 'Sign up';
+    document.getElementById('authError').classList.remove('show');
+  }
+
+  function toggleAuthMode() {
+    authMode = authMode === 'signup' ? 'login' : 'signup';
+    updateAuthForm();
+  }
+
+  // ── Auth ──────────────────────────────────────────────────────
+  async function handleAuth(e) {
+    e.preventDefault();
+    const email = document.getElementById('authEmail').value;
+    const password = document.getElementById('authPassword').value;
+    const errorEl = document.getElementById('authError');
+
+    try {
+      const endpoint = authMode === 'signup' ? '/auth/signup' : '/auth/login';
+      const res = await fetch(`${API}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        errorEl.textContent = data.error || 'Something went wrong';
+        errorEl.classList.add('show');
+        return;
+      }
+
+      session = data.session;
+      userEmail = data.email;
+      localStorage.setItem('d2l_session', session);
+      localStorage.setItem('d2l_email', userEmail);
+
+      // Set cookie for session auth
+      document.cookie = `d2l_session=${session}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
+
+      updateNavLoggedIn();
+      showDashboard();
+    } catch (err) {
+      errorEl.textContent = 'Network error — is the server running?';
+      errorEl.classList.add('show');
+    }
+  }
+
+  async function logout() {
+    try {
+      await fetch(`${API}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {}
+    clearSession();
+    document.cookie = 'd2l_session=; path=/; max-age=0';
+    updateNavLoggedOut();
+    goHome();
+  }
+
+  // ── API Keys ──────────────────────────────────────────────────
+  async function loadKeys() {
+    try {
+      const res = await fetch(`${API}/keys`, {
+        credentials: 'include',
+      });
+      if (!res.ok) { showAuth('login'); return; }
+      const data = await res.json();
+      userKeys = data.keys || [];
+      renderKeys();
+      renderBrowseSelect();
+    } catch (err) {
+      console.error('Failed to load keys:', err);
+    }
+  }
+
+  async function createKey() {
+    const label = document.getElementById('newKeyLabel').value || 'Untitled';
+    try {
+      const res = await fetch(`${API}/keys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ label }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('newKeyReveal').classList.remove('hidden');
+        document.getElementById('newKeyText').textContent = data.key;
+        document.getElementById('newKeyLabel').value = '';
+        loadKeys();
+      }
+    } catch (err) {
+      console.error('Failed to create key:', err);
+    }
+  }
+
+  async function deleteKey(key) {
+    if (!confirm('Delete this API key? All associated data will be permanently removed.')) return;
+    try {
+      await fetch(`${API}/keys/${key}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      loadKeys();
+    } catch (err) {
+      console.error('Failed to delete key:', err);
+    }
+  }
+
+  function renderKeys() {
+    const container = document.getElementById('keyList');
+    if (userKeys.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="icon">🔑</div><p>No API keys yet. Create one to get started.</p></div>';
+      return;
+    }
+    container.innerHTML = userKeys.map(k => {
+      const created = new Date(k.created).toLocaleDateString();
+      const lastUsed = k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never';
+      const masked = k.key.slice(0, 8) + '····' + k.key.slice(-6);
+      return `
+        <div class="key-card">
+          <div class="key-info">
+            <div class="key-label">${escHtml(k.label)}</div>
+            <div class="key-value" onclick="copyKey('${k.key}', this)">
+              ${masked}
+              <span class="copy-hint">Click to copy</span>
+            </div>
+            <div class="key-meta">
+              <span>Created ${created}</span>
+              <span>Last used: ${lastUsed}</span>
+              <span>${k.entryCount} entries</span>
+            </div>
+          </div>
+          <div class="key-actions">
+            <button class="btn btn-ghost btn-sm" onclick="copyKey('${k.key}')">Copy</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteKey('${k.key}')">Revoke</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function copyKey(key, el) {
+    navigator.clipboard.writeText(key).then(() => {
+      if (el) {
+        const hint = el.querySelector('.copy-hint');
+        if (hint) { hint.textContent = 'Copied!'; setTimeout(() => hint.textContent = 'Click to copy', 1500); }
+      }
+    });
+  }
+
+  function renderBrowseSelect() {
+    const select = document.getElementById('browseKeySelect');
+    select.innerHTML = '<option value="">Choose a key...</option>' +
+      userKeys.map(k => `<option value="${k.key}">${escHtml(k.label)} (${k.key.slice(0,8)}...)</option>`).join('');
+  }
+
+  // ── Data Browser ──────────────────────────────────────────────
+  async function browseData() {
+    const apiKey = document.getElementById('browseKeySelect').value;
+    const container = document.getElementById('dataTableContainer');
+    if (!apiKey) {
+      container.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>Select an API key to browse its stored data.</p></div>';
+      return;
+    }
+    try {
+      const res = await fetch(`${API}/api/data`, {
+        headers: { 'X-API-Key': apiKey },
+      });
+      const listing = await res.json();
+      if (!listing.keys || listing.keys.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No data stored under this key yet.</p></div>';
+        return;
+      }
+
+      // Fetch all values
+      const entries = await Promise.all(listing.keys.map(async key => {
+        const r = await fetch(`${API}/api/data/${encodeURIComponent(key)}`, {
+          headers: { 'X-API-Key': apiKey },
+        });
+        const d = await r.json();
+        return { key, value: d.value };
+      }));
+
+      container.innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>Key</th><th>Value</th></tr></thead>
+          <tbody>
+            ${entries.map(e => `
+              <tr>
+                <td class="key-col">${escHtml(e.key)}</td>
+                <td class="value-col" title="${escHtml(JSON.stringify(e.value))}">${escHtml(JSON.stringify(e.value))}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    } catch (err) {
+      container.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data.</p></div>';
+    }
+  }
+
+  // ── Util ──────────────────────────────────────────────────────
+  function escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = String(str);
+    return d.innerHTML;
+  }
+</script>
+
+</body>
+</html>
