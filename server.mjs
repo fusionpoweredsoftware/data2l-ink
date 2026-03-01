@@ -355,6 +355,7 @@ async function handleRequest(req, res) {
         case 'JJFS_WRITE':
           if (content === undefined || content === null)
             return json(res, 400, { error: 'content is required for JJFS_WRITE' });
+          if (!wsForKey[wsName]) wsForKey[wsName] = {};
           result = jjfsWrite(wsForKey, wsName, filePath, content);
           if (result.success) saveWorkspaces();
           break;
@@ -372,7 +373,11 @@ async function handleRequest(req, res) {
 
         case 'JJFS_DELETE':
           result = jjfsDelete(wsForKey, wsName, filePath);
-          if (result.success) saveWorkspaces();
+          if (result.success) {
+            if (wsName !== 'default' && Object.keys(wsForKey[wsName] || {}).length === 0)
+              delete wsForKey[wsName];
+            saveWorkspaces();
+          }
           break;
 
         case 'JJFS_MOVE':
@@ -503,6 +508,7 @@ async function handleRequest(req, res) {
       }
 
       if (method === 'PUT') {
+        if (!wsForKey[wsName]) wsForKey[wsName] = {};
         const content = await readBody(req);
         const r = jjfsWrite(wsForKey, wsName, filePath, content);
         if (r.success) saveWorkspaces();
@@ -511,7 +517,11 @@ async function handleRequest(req, res) {
 
       if (method === 'DELETE') {
         const r = jjfsDelete(wsForKey, wsName, filePath);
-        if (r.success) saveWorkspaces();
+        if (r.success) {
+          if (wsName !== 'default' && Object.keys(wsForKey[wsName] || {}).length === 0)
+            delete wsForKey[wsName];
+          saveWorkspaces();
+        }
         return json(res, r.success ? 200 : 404, r);
       }
 
