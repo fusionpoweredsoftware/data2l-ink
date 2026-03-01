@@ -421,6 +421,29 @@
       color: var(--text);
     }
     .perms-path-input:focus { outline: none; border-color: var(--accent-bright); }
+    .perms-ws-hint { color: var(--text-faint); font-size: 0.78rem; font-weight: 400; }
+    .perms-ws-name-input {
+      flex: 0 0 140px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+    .perms-ws-name-input:focus { outline: none; border-color: var(--accent-bright); }
+    .perms-ws-remove {
+      background: none;
+      border: none;
+      color: var(--text-faint);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+    .perms-ws-remove:hover { color: var(--danger); }
 
     .create-key-form {
       display: flex;
@@ -1042,9 +1065,8 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
           </div>
           <div id="new-key-wsblock">
             <div class="perms-ws-header">
-              <span>Workspaces:</span>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="wsSelectAll(true)">Select all</button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="wsSelectAll(false)">Unselect all</button>
+              <span>Workspace restrictions <span class="perms-ws-hint">(empty = all workspaces)</span></span>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addWsRow()">+ Add workspace</button>
             </div>
             <div class="perms-ws-list" id="new-key-wslist"></div>
           </div>
@@ -1299,7 +1321,6 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       userKeys = data.keys || [];
       availableWorkspaces = data.availableWorkspaces || [];
       renderKeys();
-      renderCreateFormWorkspaces();
       browseData();
       loadFsWorkspaces();
     } catch (err) {
@@ -1313,14 +1334,16 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     const fs = document.getElementById('new-key-fs')?.checked ?? true;
     const selectedWs = [];
     const paths = {};
-    availableWorkspaces.forEach(ws => {
-      const cb = document.getElementById('new-key-ws-' + ws);
-      if (cb && cb.checked) selectedWs.push(ws);
-      const pathInput = document.getElementById('new-key-path-' + ws);
-      const pathVal = pathInput ? pathInput.value.trim() : '';
-      if (pathVal && pathVal !== '/') paths[ws] = pathVal;
+    document.querySelectorAll('#new-key-wslist .perms-ws-row').forEach(row => {
+      const inputs = row.querySelectorAll('input[type="text"]');
+      const wsName = inputs[0]?.value.trim();
+      const pathVal = inputs[1]?.value.trim();
+      if (wsName) {
+        selectedWs.push(wsName);
+        if (pathVal && pathVal !== '/') paths[wsName] = pathVal;
+      }
     });
-    const workspaces = selectedWs.length === availableWorkspaces.length ? '*' : selectedWs;
+    const workspaces = selectedWs.length === 0 ? '*' : selectedWs;
     const permissions = { kv, fs, workspaces, paths };
     try {
       const res = await fetch(`${API}/keys`, {
@@ -1406,28 +1429,24 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     }).join('');
   }
 
-  function renderCreateFormWorkspaces() {
+  function addWsRow(name = '', path = '') {
     const list = document.getElementById('new-key-wslist');
     if (!list) return;
-    list.innerHTML = availableWorkspaces.map(ws => `
-      <div class="perms-ws-row">
-        <input type="checkbox" id="new-key-ws-${ws}" checked>
-        <span class="perms-ws-name">${escHtml(ws)}</span>
-        <span class="perms-path-label">path:</span>
-        <input type="text" class="perms-path-input" id="new-key-path-${ws}" placeholder="/ (unrestricted)">
-      </div>
-    `).join('');
+    const row = document.createElement('div');
+    row.className = 'perms-ws-row';
+    row.innerHTML =
+      '<input type="text" class="perms-ws-name-input" placeholder="workspace name" value="' + escHtml(name) + '">' +
+      '<span class="perms-path-label">path:</span>' +
+      '<input type="text" class="perms-path-input" placeholder="/ (unrestricted)" value="' + escHtml(path) + '">' +
+      '<button type="button" class="perms-ws-remove" onclick="this.closest(\'.perms-ws-row\').remove()" title="Remove">×</button>';
+    list.appendChild(row);
+    row.querySelector('.perms-ws-name-input').focus();
   }
 
   function toggleNewKeyWsList() {
     const fsCheck = document.getElementById('new-key-fs');
     const wsblock = document.getElementById('new-key-wsblock');
     if (wsblock) wsblock.style.display = fsCheck && fsCheck.checked ? '' : 'none';
-  }
-
-  function wsSelectAll(checked) {
-    document.querySelectorAll('#new-key-wslist input[type="checkbox"]')
-      .forEach(cb => { cb.checked = checked; });
   }
 
   function copyNewKey(btn) {
