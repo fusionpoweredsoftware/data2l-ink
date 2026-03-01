@@ -13,10 +13,10 @@ const SESSIONS_FILE   = path.join(__dirname, 'sessions.json');
 const WORKSPACES_FILE = path.join(__dirname, 'workspaces.json');
 
 // ── In-memory stores ────────────────────────────────────────────────
-let dataStore  = {};   // { apiKey: { key: value, ... } }
+let dataStore  = {};   // { email: { key: value, ... } }
 let accounts   = {};   // { email: { passwordHash, salt, apiKeys: [{ key, label, created, lastUsed }] } }
 let sessions   = {};   // { sessionToken: { email, created, expires } }
-let workspaces = {};   // { apiKey: { wsName: { path: content | dir } } }
+let workspaces = {};   // { email: { wsName: { path: content | dir } } }
 
 // ── Persistence ─────────────────────────────────────────────────────
 function loadFromDisk() {
@@ -128,12 +128,12 @@ function serveStatic(res, filePath) {
   }
 }
 
-// Ensure a default workspace exists for an API key.
-function provisionWorkspace(apiKey) {
-  if (!workspaces[apiKey]) {
-    workspaces[apiKey] = { default: {} };
-    saveWorkspaces();
-  }
+// Ensure a default workspace and KV store exist for an account.
+function provisionAccount(email) {
+  let dirty = false;
+  if (!workspaces[email]) { workspaces[email] = { default: {} }; dirty = true; }
+  if (!dataStore[email])  { dataStore[email]  = {};               dirty = true; }
+  if (dirty) { saveWorkspaces(); saveData(); }
 }
 
 // ── Session GC ───────────────────────────────────────────────────────
@@ -232,11 +232,8 @@ async function handleRequest(req, res) {
       const apiKey = generateKey();
       const account = accounts[session.email];
       account.apiKeys.push({ key: apiKey, label: label || 'Untitled', created: Date.now(), lastUsed: null });
-      dataStore[apiKey] = {};
-      workspaces[apiKey] = { default: {} };
+      provisionAccount(session.email);
       saveAccounts();
-      saveData();
-      saveWorkspaces();
       return json(res, 201, { key: apiKey, label: label || 'Untitled' });
     } catch { return json(res, 400, { error: 'Invalid request body' }); }
   }
@@ -251,9 +248,9 @@ async function handleRequest(req, res) {
         label: k.label,
         created: k.created,
         lastUsed: k.lastUsed,
-        entryCount: Object.keys(dataStore[k.key] || {}).length,
-        wsCount: Object.keys(workspaces[k.key] || {}).length,
-        fsFileCount: Object.values(workspaces[k.key] || {}).reduce((sum, ws) => sum + countFiles(ws), 0),
+        entryCount: Object.keys(dataStore[session.email] || {}).length,
+        wsCount: Object.keys(workspaces[session.email] || {}).length,
+        fsFileCount: Object.values(workspaces[session.email] || {}).reduce((sum, ws) => sum + countFiles(ws), 0),
       })),
     });
   }
@@ -266,11 +263,7 @@ async function handleRequest(req, res) {
     const idx = account.apiKeys.findIndex(k => k.key === keyToDelete);
     if (idx === -1) return json(res, 404, { error: 'API key not found' });
     account.apiKeys.splice(idx, 1);
-    delete dataStore[keyToDelete];
-    delete workspaces[keyToDelete];
     saveAccounts();
-    saveData();
-    saveWorkspaces();
     return json(res, 200, { success: true });
   }
 
@@ -285,8 +278,8 @@ async function handleRequest(req, res) {
     const keyObj = ownerInfo.account.apiKeys.find(k => k.key === apiKey);
     if (keyObj) { keyObj.lastUsed = Date.now(); saveAccounts(); }
 
-    if (!dataStore[apiKey]) dataStore[apiKey] = {};
-    const store = dataStore[apiKey];
+    provisionAccount(ownerInfo.email);
+    const store = dataStore[ownerInfo.email];
     const dataPath = pathname.replace('/api/data', '').replace(/^\//, '');
 
     if (!dataPath && method === 'GET')
@@ -330,8 +323,8 @@ async function handleRequest(req, res) {
     const keyObj = ownerInfo.account.apiKeys.find(k => k.key === apiKey);
     if (keyObj) { keyObj.lastUsed = Date.now(); saveAccounts(); }
 
-    provisionWorkspace(apiKey);
-    const wsForKey = workspaces[apiKey];
+    provisionAccount(ownerInfo.email);
+    const wsForKey = workspaces[ownerInfo.email];
 
     // POST /api/fs/execute — perform a JJFS operation
     if (pathname === '/api/fs/execute' && method === 'POST') {
@@ -569,8 +562,37 @@ async function handleRequest(req, res) {
   json(res, 404, { error: 'Not found' });
 }
 
+// ── Migrate legacy per-API-key data to per-account ────────────────────
+function migrateToAccountScoped() {
+  let dirty = false;
+  for (const [k, v] of Object.entries(dataStore)) {
+    if (!k.startsWith('d2l_')) continue;
+    const owner = findAccountByApiKey(k);
+    if (!owner) { delete dataStore[k]; dirty = true; continue; }
+    const email = owner.email;
+    if (!dataStore[email]) dataStore[email] = {};
+    Object.assign(dataStore[email], v);
+    delete dataStore[k];
+    dirty = true;
+  }
+  for (const [k, v] of Object.entries(workspaces)) {
+    if (!k.startsWith('d2l_')) continue;
+    const owner = findAccountByApiKey(k);
+    if (!owner) { delete workspaces[k]; dirty = true; continue; }
+    const email = owner.email;
+    if (!workspaces[email]) workspaces[email] = {};
+    for (const [ws, tree] of Object.entries(v)) {
+      if (!workspaces[email][ws]) workspaces[email][ws] = tree;
+    }
+    delete workspaces[k];
+    dirty = true;
+  }
+  if (dirty) { saveData(); saveWorkspaces(); }
+}
+
 // ── Start ─────────────────────────────────────────────────────────────
 loadFromDisk();
+migrateToAccountScoped();
 const server = http.createServer(handleRequest);
 server.listen(PORT, () => {
   const totalFiles = Object.values(workspaces).reduce((sum, kw) =>
