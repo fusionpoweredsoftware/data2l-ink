@@ -1370,7 +1370,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       if (wsName) {
         selectedWs.push(wsName);
         if (pathVal) {
-          const parts = pathVal.split(',').map(p => p.trim()).filter(p => p && p !== '/');
+          const parts = pathVal.split(/(?<!\\),/).map(p => p.trim().replace(/\\,/g, ',')).filter(p => p && p !== '/');
           if (parts.length === 1) paths[wsName] = parts[0];
           else if (parts.length > 1) paths[wsName] = parts;
         }
@@ -1505,7 +1505,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     row.innerHTML =
       '<input type="text" class="perms-ws-name-input" placeholder="workspace name" value="' + escHtml(name) + '">' +
       '<span class="perms-path-label">paths:</span>' +
-      '<input type="text" class="perms-path-input" placeholder="/a, /b (comma-separated, blank = all)" value="' + escHtml(path) + '">' +
+      '<input type="text" class="perms-path-input" placeholder="/a, /b (comma-separated; escape literal commas as \,)" value="' + escHtml(path) + '">' +
       '<button type="button" class="perms-ws-remove" onclick="this.closest(\'.perms-ws-row\').remove()" title="Remove">×</button>';
     list.appendChild(row);
     row.querySelector('.perms-ws-name-input').focus();
