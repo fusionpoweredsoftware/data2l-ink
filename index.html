@@ -445,6 +445,35 @@
     }
     .perms-ws-remove:hover { color: var(--danger); }
 
+    /* Key card — privileges toggle */
+    .key-perms-toggle {
+      background: none; border: none; padding: 0;
+      color: var(--accent-bright); font-size: 0.78rem;
+      cursor: pointer; font-family: var(--font-body);
+    }
+    .key-perms-toggle:hover { text-decoration: underline; }
+
+    /* Expandable privileges panel */
+    .key-perms-detail {
+      display: none;
+      flex-basis: 100%; width: 100%;
+      border-top: 1px solid var(--border);
+      padding-top: 12px; margin-top: 4px;
+      font-size: 0.82rem; color: var(--text-dim);
+    }
+    .key-perms-detail.open { display: block; }
+    .key-perms-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .perms-badge { padding: 1px 8px; border-radius: 100px; font-size: 0.75rem; font-family: var(--font-mono); }
+    .perms-badge.on  { background: rgba(74,222,128,0.12); color: #4ade80; }
+    .perms-badge.off { background: var(--surface-2); color: var(--text-faint); }
+    .perms-ws-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .perms-ws-chip {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 8px;
+      font-family: var(--font-mono); font-size: 0.75rem; color: var(--text);
+    }
+    .perms-path-chip { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-faint); }
+
     .create-key-form {
       display: flex;
       flex-direction: column;
@@ -1418,15 +1447,47 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
               <span>${k.entryCount} KV entries</span>
               <span>${k.wsCount || 0} workspace${(k.wsCount || 0) !== 1 ? 's' : ''}</span>
               <span>${k.fsFileCount || 0} FS file${(k.fsFileCount || 0) !== 1 ? 's' : ''}</span>
-              <span style="color:var(--accent-bright)">${escHtml(permSummary(perms))}</span>
+              <button class="key-perms-toggle" onclick="toggleKeyPerms(this)">Privileges &#9662;</button>
             </div>
           </div>
           <div class="key-actions">
             <button class="btn btn-danger btn-sm" onclick="deleteKey(${JSON.stringify(k.key)})">Revoke</button>
           </div>
+          <div class="key-perms-detail">${renderPermsDetail(perms)}</div>
         </div>
       `;
     }).join('');
+  }
+
+  function renderPermsDetail(p) {
+    p = p ?? { kv: true, fs: true, workspaces: '*', paths: {} };
+    const badge = (on) => on
+      ? '<span class="perms-badge on">Enabled</span>'
+      : '<span class="perms-badge off">Disabled</span>';
+    let wsSection = '';
+    if (p.fs) {
+      if (p.workspaces === '*') {
+        wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-badge on">All</span></div>';
+      } else if (Array.isArray(p.workspaces) && p.workspaces.length) {
+        const paths = p.paths || {};
+        const chips = p.workspaces.map(ws =>
+          '<span class="perms-ws-chip">' + escHtml(ws) + '</span>' +
+          (paths[ws] ? '<span class="perms-path-chip">→ ' + escHtml(paths[ws]) + '</span>' : '')
+        ).join('');
+        wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-ws-chips">' + chips + '</span></div>';
+      } else {
+        wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-badge off">None</span></div>';
+      }
+    }
+    return '<div class="key-perms-row">KV store: ' + badge(p.kv) + '</div>' +
+           '<div class="key-perms-row">File system: ' + badge(p.fs) + '</div>' +
+           wsSection;
+  }
+
+  function toggleKeyPerms(btn) {
+    const detail = btn.closest('.key-card').querySelector('.key-perms-detail');
+    const open = detail.classList.toggle('open');
+    btn.textContent = open ? 'Privileges \u25b4' : 'Privileges \u25be';
   }
 
   function addWsRow(name = '', path = '') {
