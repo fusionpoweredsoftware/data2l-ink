@@ -451,6 +451,132 @@
     .empty-state .icon { font-size: 2rem; margin-bottom: 12px; }
     .empty-state p { font-size: 0.92rem; }
 
+    /* ── Dashboard tabs ──────────────────────────────── */
+    .dash-tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+    }
+    .dash-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .dash-tab:hover { color: var(--text); }
+    .dash-tab.active { color: var(--accent-bright); border-bottom-color: var(--accent-bright); }
+
+    /* ── Playground ──────────────────────────────────── */
+    .pg-key-row { margin-bottom: 24px; }
+    .pg-section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-faint);
+      margin-bottom: 10px;
+    }
+    .op-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+    .op-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 13px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-family: var(--font-body);
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .op-card:hover { border-color: var(--border-bright); color: var(--text); }
+    .op-card.active { border-color: var(--accent); background: rgba(108,92,231,0.1); color: var(--accent-bright); }
+    .op-method {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-right: 6px;
+      font-family: var(--font-mono);
+    }
+    .m-get    { background: rgba(0,210,160,0.15);   color: var(--green); }
+    .m-put    { background: rgba(108,92,231,0.2);   color: var(--accent-bright); }
+    .m-patch  { background: rgba(255,192,72,0.15);  color: var(--yellow); }
+    .m-delete { background: var(--red-dim);          color: var(--red); }
+    .m-post   { background: rgba(0,210,160,0.15);   color: var(--green); }
+    .pg-params { margin-bottom: 8px; }
+    .pg-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 720px) { .pg-layout { grid-template-columns: 1fr; } }
+    .pg-panel-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .pg-code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      overflow-x: auto;
+    }
+    .pg-code pre {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.65;
+      white-space: pre;
+      color: var(--text-dim);
+    }
+    .pg-run-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .pg-response {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      min-height: 80px;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+    .pg-response pre {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text-dim);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .status-ok  { background: var(--green-dim); color: var(--green); }
+    .status-err { background: var(--red-dim);   color: var(--red); }
+    .pg-response-empty { color: var(--text-faint); font-size: 0.85rem; }
+
     /* ── Footer ──────────────────────────────────────────── */
     footer {
       border-top: 1px solid var(--border);
@@ -761,6 +887,12 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
   <!-- ═══════════════ DASHBOARD ═══════════════ -->
   <div id="dashPage" class="hidden">
     <section class="dashboard">
+      <div class="dash-tabs">
+        <button class="dash-tab active" id="tabKeys" onclick="switchDashTab('keys')">API Keys</button>
+        <button class="dash-tab" id="tabPlayground" onclick="switchDashTab('playground')">Playground</button>
+      </div>
+
+      <div id="dashKeys">
       <div class="dash-header">
         <h2>Your API Keys</h2>
       </div>
@@ -803,6 +935,44 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
           </div>
         </div>
       </div>
+      </div><!-- /dashKeys -->
+
+      <div id="dashPlayground" class="hidden">
+        <div class="pg-key-row">
+          <div class="form-group" style="max-width:360px">
+            <label>API key to use</label>
+            <select id="pgKeySelect" onchange="updateCode()">
+              <option value="">Choose a key...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pg-section-label">Key-Value Store</div>
+        <div class="op-grid" id="opGridKv"></div>
+
+        <div class="pg-section-label">File System (JJFS)</div>
+        <div class="op-grid" id="opGridFs"></div>
+
+        <div class="pg-params" id="pgParams"></div>
+
+        <div class="pg-layout">
+          <div>
+            <div class="pg-panel-label">Generated code</div>
+            <div class="pg-code"><pre id="pgCodePre"></pre></div>
+          </div>
+          <div>
+            <div class="pg-panel-label">Response</div>
+            <div class="pg-run-row">
+              <button class="btn btn-green btn-sm" onclick="runOp()">Run</button>
+              <span id="pgStatus"></span>
+            </div>
+            <div class="pg-response" id="pgResponse">
+              <p class="pg-response-empty">Hit Run to see the response.</p>
+            </div>
+          </div>
+        </div>
+      </div><!-- /dashPlayground -->
+
     </section>
   </div>
 </div>
@@ -1109,6 +1279,355 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
     const d = document.createElement('div');
     d.textContent = String(str);
     return d.innerHTML;
+  }
+
+  // ── Playground ────────────────────────────────────────────────
+  let pgActiveOp = 'kv-put';
+  let pgInited = false;
+
+  const OPS = [
+    {
+      id: 'kv-put', group: 'kv', label: 'Store value', method: 'PUT',
+      params: [
+        { id: 'key',   label: 'Key',              ph: 'myapp' },
+        { id: 'value', label: 'Value (any JSON)',  ph: '{ "users": 42, "status": "live" }', ta: true },
+      ],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/data/" + (p.key || ':key') + "', {\n" +
+          "  method: 'PUT',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({\n" +
+          "    value: " + (p.value || '...') + "\n" +
+          "  })\n" +
+          "})";
+      },
+      req(p, k) {
+        return { url: '/api/data/' + encodeURIComponent(p.key), method: 'PUT',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: safeParse(p.value) }) };
+      }
+    },
+    {
+      id: 'kv-get', group: 'kv', label: 'Get value', method: 'GET',
+      params: [{ id: 'key', label: 'Key', ph: 'myapp' }],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/data/" + (p.key || ':key') + "', {\n" +
+          "  headers: { 'X-API-Key': '" + k + "' }\n" +
+          "})\n" +
+          ".then(r => r.json())\n" +
+          ".then(data => console.log(data.value))";
+      },
+      req(p, k) {
+        return { url: '/api/data/' + encodeURIComponent(p.key), method: 'GET',
+          headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'kv-list', group: 'kv', label: 'List keys', method: 'GET',
+      params: [],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/data', {\n" +
+          "  headers: { 'X-API-Key': '" + k + "' }\n" +
+          "})\n" +
+          ".then(r => r.json())\n" +
+          ".then(data => console.log(data.keys))";
+      },
+      req(p, k) {
+        return { url: '/api/data', method: 'GET', headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'kv-delete', group: 'kv', label: 'Delete key', method: 'DELETE',
+      params: [{ id: 'key', label: 'Key', ph: 'myapp' }],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/data/" + (p.key || ':key') + "', {\n" +
+          "  method: 'DELETE',\n" +
+          "  headers: { 'X-API-Key': '" + k + "' }\n" +
+          "})";
+      },
+      req(p, k) {
+        return { url: '/api/data/' + encodeURIComponent(p.key), method: 'DELETE',
+          headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'fs-write', group: 'fs', label: 'Write file', method: 'PUT',
+      params: [
+        { id: 'workspace', label: 'Workspace',  ph: 'default' },
+        { id: 'path',      label: 'Path',        ph: 'notes/todo.md' },
+        { id: 'content',   label: 'Content',     ph: '# My Notes\n- Item 1', ta: true },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'PUT',\n" +
+          "  headers: { 'X-API-Key': '" + k + "' },\n" +
+          "  body: " + JSON.stringify(p.content || '') + "\n" +
+          "})";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || 'file.txt').replace(/^\//, '');
+        return { url: '/api/fs/' + ws + '/' + path, method: 'PUT',
+          headers: { 'X-API-Key': k }, body: p.content || '' };
+      }
+    },
+    {
+      id: 'fs-read', group: 'fs', label: 'Read / List', method: 'GET',
+      params: [
+        { id: 'workspace', label: 'Workspace',              ph: 'default' },
+        { id: 'path',      label: 'Path (file or dir)',     ph: 'notes/todo.md' },
+        { id: 'start',     label: 'Start line (optional)',  ph: '' },
+        { id: 'end',       label: 'End line (optional)',    ph: '' },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || '';
+        const qs = (p.start && p.end) ? '?start=' + p.start + '&end=' + p.end
+                 : p.start ? '?start=' + p.start : '';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + qs + "', {\n" +
+          "  headers: { 'X-API-Key': '" + k + "' }\n" +
+          "})\n" +
+          ".then(r => r.text())\n" +
+          ".then(console.log)";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || '').replace(/^\//, '');
+        const qs = (p.start && p.end) ? '?start=' + p.start + '&end=' + p.end
+                 : p.start ? '?start=' + p.start : '';
+        return { url: '/api/fs/' + ws + '/' + path + qs, method: 'GET',
+          headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'fs-edit', group: 'fs', label: 'Surgical edit', method: 'PATCH',
+      params: [
+        { id: 'workspace', label: 'Workspace',               ph: 'default' },
+        { id: 'path',      label: 'Path',                    ph: 'notes/todo.md' },
+        { id: 'search',    label: 'Search (must be unique)', ph: '- Item 1', ta: true },
+        { id: 'replace',   label: 'Replace with',            ph: '- Item 1\n- Item 2', ta: true },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'PATCH',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({\n" +
+          "    search: " + JSON.stringify(p.search || '') + ",\n" +
+          "    replace: " + JSON.stringify(p.replace || '') + "\n" +
+          "  })\n" +
+          "})";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || 'file.txt').replace(/^\//, '');
+        return { url: '/api/fs/' + ws + '/' + path, method: 'PATCH',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ search: p.search || '', replace: p.replace || '' }) };
+      }
+    },
+    {
+      id: 'fs-delete', group: 'fs', label: 'Delete', method: 'DELETE',
+      params: [
+        { id: 'workspace', label: 'Workspace', ph: 'default' },
+        { id: 'path',      label: 'Path',      ph: 'notes/todo.md' },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'DELETE',\n" +
+          "  headers: { 'X-API-Key': '" + k + "' }\n" +
+          "})";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || '').replace(/^\//, '');
+        return { url: '/api/fs/' + ws + '/' + path, method: 'DELETE',
+          headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'fs-move', group: 'fs', label: 'Move', method: 'POST',
+      params: [
+        { id: 'workspace',   label: 'Workspace',        ph: 'default' },
+        { id: 'path',        label: 'Source path',      ph: 'notes/todo.md' },
+        { id: 'destination', label: 'Destination path', ph: 'archive/todo.md' },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'POST',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({\n" +
+          "    op: 'move',\n" +
+          "    destination: " + JSON.stringify(p.destination || '') + "\n" +
+          "  })\n" +
+          "})";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || '').replace(/^\//, '');
+        return { url: '/api/fs/' + ws + '/' + path, method: 'POST',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ op: 'move', destination: p.destination || '' }) };
+      }
+    },
+    {
+      id: 'fs-copy', group: 'fs', label: 'Copy', method: 'POST',
+      params: [
+        { id: 'workspace',   label: 'Workspace',        ph: 'default' },
+        { id: 'path',        label: 'Source path',      ph: 'template.md' },
+        { id: 'destination', label: 'Destination path', ph: 'notes/new.md' },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'POST',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({\n" +
+          "    op: 'copy',\n" +
+          "    destination: " + JSON.stringify(p.destination || '') + "\n" +
+          "  })\n" +
+          "})";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || '').replace(/^\//, '');
+        return { url: '/api/fs/' + ws + '/' + path, method: 'POST',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ op: 'copy', destination: p.destination || '' }) };
+      }
+    },
+  ];
+
+  function safeParse(str) {
+    try { return JSON.parse(str); } catch { return str; }
+  }
+
+  function pgApiKey() {
+    return document.getElementById('pgKeySelect').value;
+  }
+
+  function switchDashTab(tab) {
+    document.getElementById('dashKeys').classList.toggle('hidden', tab !== 'keys');
+    document.getElementById('dashPlayground').classList.toggle('hidden', tab !== 'playground');
+    document.getElementById('tabKeys').classList.toggle('active', tab === 'keys');
+    document.getElementById('tabPlayground').classList.toggle('active', tab === 'playground');
+    if (tab === 'playground') {
+      if (!pgInited) initPlayground();
+      else renderPgKeySelect();
+    }
+  }
+
+  function initPlayground() {
+    pgInited = true;
+    renderPgKeySelect();
+    renderOpGrids();
+    selectOp('kv-put');
+  }
+
+  function renderPgKeySelect() {
+    const sel = document.getElementById('pgKeySelect');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Choose a key...</option>' +
+      userKeys.map(k => '<option value="' + k.key + '">' + escHtml(k.label) + ' (' + k.key.slice(0, 8) + '...)</option>').join('');
+    if (prev) sel.value = prev;
+    else if (userKeys.length > 0) sel.value = userKeys[0].key;
+    updateCode();
+  }
+
+  function renderOpGrids() {
+    const mc = { GET: 'm-get', PUT: 'm-put', PATCH: 'm-patch', DELETE: 'm-delete', POST: 'm-post' };
+    const card = op =>
+      '<button class="op-card" id="op-' + op.id + '" onclick="selectOp(\'' + op.id + '\')">' +
+      '<span class="op-method ' + (mc[op.method] || '') + '">' + op.method + '</span>' +
+      escHtml(op.label) + '</button>';
+    document.getElementById('opGridKv').innerHTML = OPS.filter(o => o.group === 'kv').map(card).join('');
+    document.getElementById('opGridFs').innerHTML = OPS.filter(o => o.group === 'fs').map(card).join('');
+  }
+
+  function selectOp(opId) {
+    pgActiveOp = opId;
+    OPS.forEach(o => {
+      const el = document.getElementById('op-' + o.id);
+      if (el) el.classList.toggle('active', o.id === opId);
+    });
+    buildParamForm(OPS.find(o => o.id === opId));
+    updateCode();
+  }
+
+  function buildParamForm(op) {
+    const container = document.getElementById('pgParams');
+    if (!op || !op.params.length) {
+      container.innerHTML = '<p style="color:var(--text-faint);font-size:0.88rem;margin-bottom:16px">No parameters needed.</p>';
+      return;
+    }
+    container.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px">' +
+      op.params.map(param => {
+        const inp = param.ta
+          ? '<textarea id="pg_' + param.id + '" placeholder="' + escHtml(param.ph || '') + '" rows="3" oninput="updateCode()" style="font-family:var(--font-mono);font-size:0.8rem;resize:vertical"></textarea>'
+          : '<input type="text" id="pg_' + param.id + '" placeholder="' + escHtml(param.ph || '') + '" oninput="updateCode()">';
+        return '<div class="form-group" style="flex:1;min-width:180px"><label>' + escHtml(param.label) + '</label>' + inp + '</div>';
+      }).join('') + '</div>';
+  }
+
+  function getParams(op) {
+    const p = {};
+    (op.params || []).forEach(param => {
+      const el = document.getElementById('pg_' + param.id);
+      p[param.id] = el ? el.value : '';
+    });
+    return p;
+  }
+
+  function updateCode() {
+    const op = OPS.find(o => o.id === pgActiveOp);
+    if (!op) return;
+    const apiKey = pgApiKey() || 'd2l_your_key';
+    const pre = document.getElementById('pgCodePre');
+    if (pre) pre.textContent = op.code(getParams(op), apiKey);
+  }
+
+  async function runOp() {
+    const op = OPS.find(o => o.id === pgActiveOp);
+    if (!op) return;
+    const apiKey = pgApiKey();
+    const statusEl = document.getElementById('pgStatus');
+    const responseEl = document.getElementById('pgResponse');
+    if (!apiKey) {
+      statusEl.innerHTML = '<span class="status-badge status-err">No API key selected</span>';
+      return;
+    }
+    const { url, method, headers, body } = op.req(getParams(op), apiKey);
+    statusEl.innerHTML = '<span style="color:var(--text-faint);font-size:0.82rem">Running\u2026</span>';
+    responseEl.innerHTML = '';
+    try {
+      const opts = { method, headers };
+      if (body !== undefined) opts.body = body;
+      const res = await fetch(url, opts);
+      const text = await res.text();
+      const ok = res.status >= 200 && res.status < 300;
+      statusEl.innerHTML = '<span class="status-badge ' + (ok ? 'status-ok' : 'status-err') + '">' +
+        res.status + ' ' + escHtml(res.statusText) + '</span>';
+      let pretty = text;
+      try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+      responseEl.innerHTML = '<pre>' + escHtml(pretty) + '</pre>';
+    } catch (err) {
+      statusEl.innerHTML = '<span class="status-badge status-err">Network error</span>';
+      responseEl.innerHTML = '<pre>' + escHtml(String(err)) + '</pre>';
+    }
   }
 </script>
 
