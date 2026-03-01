@@ -1361,6 +1361,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
   }
 
   async function createKey() {
+    const btn = document.querySelector('.generate-row .btn');
     const label = document.getElementById('newKeyLabel').value || 'Untitled';
     const kv = document.getElementById('new-key-kv')?.checked ?? true;
     const fs = document.getElementById('new-key-fs')?.checked ?? true;
@@ -1390,10 +1391,15 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       });
       const data = await res.json();
       if (res.ok) {
-        document.getElementById('newKeyReveal').classList.remove('hidden');
+        const reveal = document.getElementById('newKeyReveal');
+        reveal.classList.remove('hidden');
+        reveal.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         document.getElementById('newKeyText').textContent = data.key;
         document.getElementById('pgKeyInput').value = data.key;
         document.getElementById('newKeyLabel').value = '';
+        btn.textContent = '✓ Key generated';
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = 'Generate key'; btn.disabled = false; }, 2000);
         loadKeys();
       }
     } catch (err) {
