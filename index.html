@@ -58,6 +58,8 @@
 
     /* ── Utility ────────────────────────────────────────── */
     .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; }
+    body.dash-open { height: 100dvh; overflow: hidden; }
+    body.dash-open .container { height: 100%; }
     .hidden { display: none !important; }
 
     /* ── Nav ─────────────────────────────────────────────── */
@@ -68,6 +70,7 @@
       padding: 20px 0;
       border-bottom: 1px solid var(--border);
       margin-bottom: 0;
+      flex-shrink: 0;
     }
     .logo {
       font-family: var(--font-mono);
@@ -308,19 +311,26 @@
     .auth-toggle a:hover { text-decoration: underline; }
 
     /* ── Dashboard ───────────────────────────────────────── */
+    #dashPage {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
     .dashboard {
       flex: 1;
       min-height: 0;
       display: flex;
       flex-direction: column;
-      padding: 24px 0 0;
+      padding: 12px 0 0;
       overflow: hidden;
     }
     .dash-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 32px;
+      margin-bottom: 20px;
       flex-wrap: wrap;
       gap: 12px;
     }
@@ -782,7 +792,7 @@
       flex: 1;
       min-height: 0;
       display: flex;
-      gap: 28px;
+      gap: 20px;
       align-items: stretch;
       overflow: hidden;
     }
@@ -793,7 +803,7 @@
       gap: 16px;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 20px 0 40px;
+      padding: 12px 0 16px;
     }
     .dash-right-pane {
       flex: 1;
@@ -803,7 +813,7 @@
       gap: 20px;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 20px 0 40px;
+      padding: 12px 0 16px;
     }
     @media (max-width: 900px) {
       .dash-pane-layout { flex-direction: column; overflow-y: auto; }
@@ -1458,14 +1468,14 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
 
   // ── Navigation ────────────────────────────────────────────────
   function goHome() {
-    document.body.style.overflow = '';
+    document.body.classList.remove('dash-open');
     document.getElementById('landingPage').classList.remove('hidden');
     document.getElementById('authPage').classList.add('hidden');
     document.getElementById('dashPage').classList.add('hidden');
   }
 
   function showAuth(mode) {
-    document.body.style.overflow = '';
+    document.body.classList.remove('dash-open');
     authMode = mode;
     document.getElementById('landingPage').classList.add('hidden');
     document.getElementById('authPage').classList.remove('hidden');
@@ -1475,7 +1485,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
 
   function showDashboard() {
     if (!session) return showAuth('login');
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add('dash-open');
     document.getElementById('landingPage').classList.add('hidden');
     document.getElementById('authPage').classList.add('hidden');
     document.getElementById('dashPage').classList.remove('hidden');
