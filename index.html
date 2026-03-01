@@ -1451,7 +1451,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
             </div>
           </div>
           <div class="key-actions">
-            <button class="btn btn-danger btn-sm" onclick="deleteKey(${JSON.stringify(k.key)})">Revoke</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteKey('${k.key}')">Revoke</button>
           </div>
           <div class="key-perms-detail">${renderPermsDetail(perms)}</div>
         </div>
