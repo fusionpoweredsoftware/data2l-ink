@@ -57,10 +57,20 @@ function json(res, status, data) {
   res.writeHead(status, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, Authorization',
   });
   res.end(JSON.stringify(data));
+}
+
+function text(res, status, content) {
+  res.writeHead(status, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, Authorization',
+  });
+  res.end(content);
 }
 
 function readBody(req) {
@@ -305,7 +315,7 @@ async function handleRequest(req, res) {
   if (method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, Authorization',
     });
     return res.end();
@@ -611,6 +621,87 @@ async function handleRequest(req, res) {
         success: true, workspace: wsName, path: browsePath,
         type: 'directory', entries,
       });
+    }
+
+    // REST: GET|PUT|PATCH|DELETE|POST /api/fs/:workspace/*path
+    if (pathname.startsWith('/api/fs/')) {
+      const fsSubpath = pathname.slice('/api/fs/'.length);
+      const slashIdx  = fsSubpath.indexOf('/');
+      const wsName    = slashIdx === -1 ? fsSubpath : fsSubpath.slice(0, slashIdx);
+      const filePath  = slashIdx === -1 ? '/' : fsSubpath.slice(slashIdx);
+      if (!wsName) return json(res, 404, { error: 'Not found' });
+
+      if (method === 'GET') {
+        if (!wsForKey[wsName]) return json(res, 404, { error: `Workspace not found: ${wsName}` });
+        const ws = wsForKey[wsName];
+        const trimmed = filePath.replace(/^\//, '');
+        let targetNode;
+        if (!trimmed) {
+          targetNode = ws;
+        } else {
+          const nav = jjfsNavigate(ws, filePath);
+          if (nav.error) return json(res, 404, { error: nav.error });
+          const { parent, name } = nav;
+          if (!(name in parent)) return json(res, 404, { error: `Not found: ${filePath}` });
+          targetNode = parent[name];
+        }
+        if (typeof targetNode === 'object') {
+          const entries = Object.entries(targetNode).map(([n, v]) => ({
+            name: n, type: typeof v === 'object' ? 'directory' : 'file',
+            ...(typeof v === 'string' ? { size: v.length } : { fileCount: countFiles(v) }),
+          }));
+          return json(res, 200, { type: 'directory', workspace: wsName, path: filePath, entries });
+        }
+        let content = String(targetNode);
+        const start = url.searchParams.get('start');
+        const end   = url.searchParams.get('end');
+        if (start && end) {
+          const lines = content.split('\n');
+          content = lines.slice(Math.max(0, parseInt(start) - 1), Math.min(lines.length, parseInt(end))).join('\n');
+        }
+        return text(res, 200, content);
+      }
+
+      if (method === 'PUT') {
+        const content = await readBody(req);
+        const r = jjfsWrite(wsForKey, wsName, filePath, content);
+        if (r.success) saveWorkspaces();
+        return json(res, r.success ? 200 : 400, r);
+      }
+
+      if (method === 'DELETE') {
+        const r = jjfsDelete(wsForKey, wsName, filePath);
+        if (r.success) saveWorkspaces();
+        return json(res, r.success ? 200 : 404, r);
+      }
+
+      if (method === 'PATCH') {
+        let body;
+        try { body = JSON.parse(await readBody(req)); }
+        catch { return json(res, 400, { error: 'Invalid JSON body' }); }
+        const { search, replace } = body;
+        if (search === undefined || replace === undefined)
+          return json(res, 400, { error: 'search and replace are required' });
+        const r = jjfsEdit(wsForKey, wsName, filePath, search, replace);
+        if (r.success) saveWorkspaces();
+        return json(res, r.success ? 200 : 400, r);
+      }
+
+      if (method === 'POST') {
+        let body;
+        try { body = JSON.parse(await readBody(req)); }
+        catch { return json(res, 400, { error: 'Invalid JSON body' }); }
+        const { op, destination } = body;
+        if (!op || !destination) return json(res, 400, { error: 'op and destination are required' });
+        let r;
+        if (op === 'move')      r = jjfsMove(wsForKey, wsName, filePath, destination);
+        else if (op === 'copy') r = jjfsCopy(wsForKey, wsName, filePath, destination);
+        else return json(res, 400, { error: `Unknown op: ${op}. Use 'move' or 'copy'` });
+        if (r.success) saveWorkspaces();
+        return json(res, r.success ? 200 : 400, r);
+      }
+
+      return json(res, 405, { error: 'Method not allowed' });
     }
 
     return json(res, 404, { error: 'Not found' });
