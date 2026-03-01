@@ -353,27 +353,7 @@
       padding: 4px 10px;
       border-radius: 6px;
       display: inline-block;
-      cursor: pointer;
-      transition: color 0.2s;
-      position: relative;
     }
-    .key-value:hover { color: var(--text); }
-    .key-value .copy-hint {
-      position: absolute;
-      top: -28px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--surface-3);
-      border: 1px solid var(--border-bright);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.72rem;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s;
-    }
-    .key-value:hover .copy-hint { opacity: 1; }
     .key-meta {
       display: flex;
       gap: 16px;
@@ -955,7 +935,8 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
       <div id="newKeyReveal" class="new-key-reveal hidden">
         <div class="label">✦ New API key created</div>
         <div class="key-text" id="newKeyText"></div>
-        <div class="warning">Copy this key now — you can always see it in your dashboard, but it's best to save it somewhere safe.</div>
+        <div class="warning">Copy this key now — it will never be shown again.</div>
+        <button class="btn btn-green btn-sm" style="margin-top:12px" onclick="copyNewKey(this)">Copy key</button>
       </div>
 
       <div class="create-key-form">
@@ -1013,11 +994,15 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
 
       <div id="dashPlayground" class="hidden">
         <div class="pg-key-row">
-          <div class="form-group" style="max-width:360px">
-            <label>API key to use</label>
-            <select id="pgKeySelect" onchange="updateCode()">
-              <option value="">Choose a key...</option>
-            </select>
+          <div class="form-group" style="max-width:440px">
+            <label>API key</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="password" id="pgKeyInput" placeholder="Paste your API key here…"
+                     oninput="updateCode()"
+                     style="font-family:var(--font-mono);font-size:0.82rem;flex:1">
+              <button class="btn btn-ghost btn-sm" type="button"
+                      onclick="togglePgKeyVisibility(this)">Show</button>
+            </div>
           </div>
         </div>
 
@@ -1267,10 +1252,7 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
         <div class="key-card">
           <div class="key-info">
             <div class="key-label">${escHtml(k.label)}</div>
-            <div class="key-value" onclick="copyKey('${k.key}', this)">
-              ${masked}
-              <span class="copy-hint">Click to copy</span>
-            </div>
+            <div class="key-value">${masked}</div>
             <div class="key-meta">
               <span>Created ${created}</span>
               <span>Last used: ${lastUsed}</span>
@@ -1280,7 +1262,6 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
             </div>
           </div>
           <div class="key-actions">
-            <button class="btn btn-ghost btn-sm" onclick="copyKey('${k.key}')">Copy</button>
             <button class="btn btn-danger btn-sm" onclick="deleteKey('${k.key}')">Revoke</button>
           </div>
         </div>
@@ -1288,19 +1269,25 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
     }).join('');
   }
 
-  function copyKey(key, el) {
+  function copyNewKey(btn) {
+    const key = document.getElementById('newKeyText').textContent;
     navigator.clipboard.writeText(key).then(() => {
-      if (el) {
-        const hint = el.querySelector('.copy-hint');
-        if (hint) { hint.textContent = 'Copied!'; setTimeout(() => hint.textContent = 'Click to copy', 1500); }
-      }
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy key', 1500);
     });
+  }
+
+  function togglePgKeyVisibility(btn) {
+    const input = document.getElementById('pgKeyInput');
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    btn.textContent = showing ? 'Show' : 'Hide';
   }
 
   function renderBrowseSelect() {
     const select = document.getElementById('browseKeySelect');
     select.innerHTML = '<option value="">Choose a key...</option>' +
-      userKeys.map(k => `<option value="${k.key}">${escHtml(k.label)} (${k.key.slice(0,8)}...)</option>`).join('');
+      userKeys.map(k => `<option value="${k.key}">${escHtml(k.label)}</option>`).join('');
   }
 
   // ── Data Browser ──────────────────────────────────────────────
@@ -1717,7 +1704,7 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
   }
 
   function pgApiKey() {
-    return document.getElementById('pgKeySelect').value;
+    return document.getElementById('pgKeyInput').value;
   }
 
   function switchDashTab(tab) {
@@ -1725,27 +1712,13 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
     document.getElementById('dashPlayground').classList.toggle('hidden', tab !== 'playground');
     document.getElementById('tabKeys').classList.toggle('active', tab === 'keys');
     document.getElementById('tabPlayground').classList.toggle('active', tab === 'playground');
-    if (tab === 'playground') {
-      if (!pgInited) initPlayground();
-      else renderPgKeySelect();
-    }
+    if (tab === 'playground' && !pgInited) initPlayground();
   }
 
   function initPlayground() {
     pgInited = true;
-    renderPgKeySelect();
     renderOpGrids();
     selectOp('kv-put');
-  }
-
-  function renderPgKeySelect() {
-    const sel = document.getElementById('pgKeySelect');
-    const prev = sel.value;
-    sel.innerHTML = '<option value="">Choose a key...</option>' +
-      userKeys.map(k => '<option value="' + k.key + '">' + escHtml(k.label) + ' (' + k.key.slice(0, 8) + '...)</option>').join('');
-    if (prev) sel.value = prev;
-    else if (userKeys.length > 0) sel.value = userKeys[0].key;
-    updateCode();
   }
 
   function renderOpGrids() {
@@ -1818,7 +1791,7 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
     const statusEl = document.getElementById('pgStatus');
     const responseEl = document.getElementById('pgResponse');
     if (!apiKey) {
-      statusEl.innerHTML = '<span class="status-badge status-err">No API key selected</span>';
+      statusEl.innerHTML = '<span class="status-badge status-err">No API key entered</span>';
       return;
     }
     const { url, method, headers, body } = op.req(getParams(op), apiKey);
