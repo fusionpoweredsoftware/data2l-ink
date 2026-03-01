@@ -1063,18 +1063,10 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
 
       <div class="data-browser">
         <h3>Data Browser</h3>
-        <div class="data-browser-select">
-          <div class="form-group">
-            <label>Select API key to browse</label>
-            <select id="browseKeySelect" onchange="browseData()">
-              <option value="">Choose a key...</option>
-            </select>
-          </div>
-        </div>
         <div id="dataTableContainer">
           <div class="empty-state">
             <div class="icon">📦</div>
-            <p>Select an API key to browse its stored data.</p>
+            <p>No API keys yet — create one to start storing data.</p>
           </div>
         </div>
       </div>
@@ -1085,7 +1077,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
           <div class="form-group">
             <label>Workspace</label>
             <select id="fsWsSelect" onchange="fsWsChanged()">
-              <option value="">Select an API key above…</option>
+              <option value="">No workspaces yet…</option>
             </select>
           </div>
         </div>
@@ -1093,7 +1085,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         <div id="fsEntries">
           <div class="empty-state">
             <div class="icon">🗂️</div>
-            <p>Select an API key to browse its file system.</p>
+            <p>No file system data yet.</p>
           </div>
         </div>
       </div>
@@ -1307,8 +1299,9 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       userKeys = data.keys || [];
       availableWorkspaces = data.availableWorkspaces || [];
       renderKeys();
-      renderBrowseSelect();
       renderCreateFormWorkspaces();
+      browseData();
+      loadFsWorkspaces();
     } catch (err) {
       console.error('Failed to load keys:', err);
     }
@@ -1452,41 +1445,26 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     btn.textContent = showing ? 'Show' : 'Hide';
   }
 
-  function renderBrowseSelect() {
-    const select = document.getElementById('browseKeySelect');
-    select.innerHTML = '<option value="">Choose a key...</option>' +
-      userKeys.map(k => `<option value="${k.key}">${escHtml(k.label)}</option>`).join('');
-  }
-
   // ── Data Browser ──────────────────────────────────────────────
   async function browseData() {
-    const apiKey = document.getElementById('browseKeySelect').value;
+    const apiKey = userKeys[0]?.key;
     const container = document.getElementById('dataTableContainer');
     if (!apiKey) {
-      container.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>Select an API key to browse its stored data.</p></div>';
-      loadFsWorkspaces('');
+      container.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>No API keys yet — create one to start storing data.</p></div>';
       return;
     }
-    loadFsWorkspaces(apiKey);
     try {
-      const res = await fetch(`${API}/api/data`, {
-        headers: { 'X-API-Key': apiKey },
-      });
+      const res = await fetch(`${API}/api/data`, { headers: { 'X-API-Key': apiKey } });
       const listing = await res.json();
       if (!listing.keys || listing.keys.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No data stored under this key yet.</p></div>';
+        container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No KV data stored yet.</p></div>';
         return;
       }
-
-      // Fetch all values
       const entries = await Promise.all(listing.keys.map(async key => {
-        const r = await fetch(`${API}/api/data/${encodeURIComponent(key)}`, {
-          headers: { 'X-API-Key': apiKey },
-        });
+        const r = await fetch(`${API}/api/data/${encodeURIComponent(key)}`, { headers: { 'X-API-Key': apiKey } });
         const d = await r.json();
         return { key, value: d.value };
       }));
-
       container.innerHTML = `
         <table class="data-table">
           <thead><tr><th>Key</th><th>Value</th></tr></thead>
@@ -1500,45 +1478,31 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
           </tbody>
         </table>
       `;
-    } catch (err) {
+    } catch {
       container.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data.</p></div>';
     }
   }
 
   // ── FS Browser ────────────────────────────────────────────────
-  let fsBrowserKey = '';
   let fsBrowserWs  = '';
   let fsBrowserPath = [];   // path segments below the workspace root
 
-  async function loadFsWorkspaces(key) {
-    fsBrowserKey = key;
+  function loadFsWorkspaces() {
     fsBrowserPath = [];
     const sel = document.getElementById('fsWsSelect');
     const entriesEl = document.getElementById('fsEntries');
     document.getElementById('fsPathBar').innerHTML = '';
-    if (!key) {
-      sel.innerHTML = '<option value="">Select an API key above…</option>';
-      entriesEl.innerHTML = '<div class="empty-state"><div class="icon">🗂️</div><p>Select an API key to browse its file system.</p></div>';
+    if (!availableWorkspaces.length) {
+      sel.innerHTML = '<option value="">No workspaces yet…</option>';
+      entriesEl.innerHTML = '<div class="empty-state"><div class="icon">🗂️</div><p>No file system data yet.</p></div>';
       return;
     }
-    try {
-      const res = await fetch('/api/fs/workspaces', { headers: { 'X-API-Key': key } });
-      const data = await res.json();
-      if (!data.workspaces || data.workspaces.length === 0) {
-        sel.innerHTML = '<option value="">No workspaces</option>';
-        entriesEl.innerHTML = '<div class="empty-state"><div class="icon">📂</div><p>No file system data for this key yet.</p></div>';
-        return;
-      }
-      sel.innerHTML = data.workspaces.map(w =>
-        '<option value="' + escHtml(w.name) + '">' + escHtml(w.name) +
-        ' (' + w.fileCount + ' file' + (w.fileCount !== 1 ? 's' : '') + ')</option>'
-      ).join('');
-      fsBrowserWs = data.workspaces[0].name;
-      sel.value = fsBrowserWs;
-      fsBrowse();
-    } catch {
-      sel.innerHTML = '<option value="">Failed to load</option>';
-    }
+    sel.innerHTML = availableWorkspaces.map(w =>
+      '<option value="' + escHtml(w) + '">' + escHtml(w) + '</option>'
+    ).join('');
+    fsBrowserWs = availableWorkspaces[0];
+    sel.value = fsBrowserWs;
+    fsBrowse();
   }
 
   function fsWsChanged() {
@@ -1547,7 +1511,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
   }
 
   async function fsBrowse() {
-    const key = fsBrowserKey;
+    const key = userKeys[0]?.key;
     const ws  = document.getElementById('fsWsSelect').value;
     if (!ws || !key) return;
     fsBrowserWs = ws;
