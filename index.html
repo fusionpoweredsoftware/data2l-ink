@@ -806,7 +806,7 @@
     </section>
 
     <section class="code-section" id="api-examples">
-      <h2 class="anim">Two storage methods. Zero headaches.</h2>
+      <h2 class="anim">Two storage methods. One framework.</h2>
       <p class="subtitle anim anim-d1">A flat key-value store for simple data, plus a full hierarchical file system for structured projects.</p>
       <div class="code-grid anim anim-d2">
         <div class="code-card">
@@ -1369,7 +1369,11 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       const pathVal = inputs[1]?.value.trim();
       if (wsName) {
         selectedWs.push(wsName);
-        if (pathVal && pathVal !== '/') paths[wsName] = pathVal;
+        if (pathVal) {
+          const parts = pathVal.split(',').map(p => p.trim()).filter(p => p && p !== '/');
+          if (parts.length === 1) paths[wsName] = parts[0];
+          else if (parts.length > 1) paths[wsName] = parts;
+        }
       }
     });
     const workspaces = selectedWs.length === 0 ? '*' : selectedWs;
@@ -1470,10 +1474,13 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-badge on">All</span></div>';
       } else if (Array.isArray(p.workspaces) && p.workspaces.length) {
         const paths = p.paths || {};
-        const chips = p.workspaces.map(ws =>
-          '<span class="perms-ws-chip">' + escHtml(ws) + '</span>' +
-          (paths[ws] ? '<span class="perms-path-chip">→ ' + escHtml(paths[ws]) + '</span>' : '')
-        ).join('');
+        const chips = p.workspaces.map(ws => {
+          const pv = paths[ws];
+          const pathChips = pv
+            ? (Array.isArray(pv) ? pv : [pv]).map(p => '<span class="perms-path-chip">→ ' + escHtml(p) + '</span>').join('')
+            : '';
+          return '<span class="perms-ws-chip">' + escHtml(ws) + '</span>' + pathChips;
+        }).join('');
         wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-ws-chips">' + chips + '</span></div>';
       } else {
         wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-badge off">None</span></div>';
@@ -1497,8 +1504,8 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     row.className = 'perms-ws-row';
     row.innerHTML =
       '<input type="text" class="perms-ws-name-input" placeholder="workspace name" value="' + escHtml(name) + '">' +
-      '<span class="perms-path-label">path:</span>' +
-      '<input type="text" class="perms-path-input" placeholder="/ (unrestricted)" value="' + escHtml(path) + '">' +
+      '<span class="perms-path-label">paths:</span>' +
+      '<input type="text" class="perms-path-input" placeholder="/a, /b (comma-separated, blank = all)" value="' + escHtml(path) + '">' +
       '<button type="button" class="perms-ws-remove" onclick="this.closest(\'.perms-ws-row\').remove()" title="Remove">×</button>';
     list.appendChild(row);
     row.querySelector('.perms-ws-name-input').focus();

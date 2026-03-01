@@ -486,10 +486,12 @@ async function handleRequest(req, res) {
       if (perms.workspaces !== '*' && !perms.workspaces.includes(wsName))
         return json(res, 403, { error: `This API key does not have access to workspace: ${wsName}` });
       const pathRestriction = (perms.paths || {})[wsName];
-      if (pathRestriction && pathRestriction !== '/') {
-        const allowed = pathRestriction.replace(/\/$/, '');
-        if (filePath !== allowed && !filePath.startsWith(allowed + '/'))
-          return json(res, 403, { error: `This API key is restricted to ${allowed} in workspace: ${wsName}` });
+      if (pathRestriction) {
+        const allowed = (Array.isArray(pathRestriction) ? pathRestriction : [pathRestriction])
+          .map(p => p.replace(/\/$/, ''))
+          .filter(p => p && p !== '');
+        if (allowed.length > 0 && !allowed.some(a => filePath === a || filePath.startsWith(a + '/')))
+          return json(res, 403, { error: `This API key is restricted to specific paths in workspace: ${wsName}` });
       }
 
       if (method === 'GET') {
