@@ -7,16 +7,18 @@ import { jjfsNavigate, parseTarget, countFiles, jjfsRead, jjfsWrite, jjfsEdit, j
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
-const DATA_FILE       = path.join(__dirname, 'store.json');
-const ACCOUNTS_FILE   = path.join(__dirname, 'accounts.json');
-const SESSIONS_FILE   = path.join(__dirname, 'sessions.json');
-const WORKSPACES_FILE = path.join(__dirname, 'workspaces.json');
+const DATA_FILE        = path.join(__dirname, 'store.json');
+const ACCOUNTS_FILE    = path.join(__dirname, 'accounts.json');
+const SESSIONS_FILE    = path.join(__dirname, 'sessions.json');
+const WORKSPACES_FILE  = path.join(__dirname, 'workspaces.json');
+const VISIBILITY_FILE  = path.join(__dirname, 'visibility.json');
 
 // ── In-memory stores ────────────────────────────────────────────────
-let dataStore  = {};   // { email: { key: value, ... } }
-let accounts   = {};   // { email: { passwordHash, salt, apiKeys: [{ key, label, created, lastUsed }] } }
-let sessions   = {};   // { sessionToken: { email, created, expires } }
-let workspaces = {};   // { email: { wsName: { path: content | dir } } }
+let dataStore    = {};   // { email: { key: value, ... } }
+let accounts     = {};   // { email: { passwordHash, salt, publicId, apiKeys: [...] } }
+let sessions     = {};   // { sessionToken: { email, created, expires } }
+let workspaces   = {};   // { email: { wsName: { path: content | dir } } }
+let kvVisibility = {};   // { email: { kvKey: 'public' } }  — absence means private
 
 // ── Persistence ─────────────────────────────────────────────────────
 function loadFromDisk() {
@@ -32,12 +34,16 @@ function loadFromDisk() {
   try {
     if (fs.existsSync(WORKSPACES_FILE)) workspaces = JSON.parse(fs.readFileSync(WORKSPACES_FILE, 'utf8'));
   } catch (e) { console.error('Failed to load workspaces:', e.message); workspaces = {}; }
+  try {
+    if (fs.existsSync(VISIBILITY_FILE)) kvVisibility = JSON.parse(fs.readFileSync(VISIBILITY_FILE, 'utf8'));
+  } catch (e) { console.error('Failed to load visibility:', e.message); kvVisibility = {}; }
 }
 
-function saveData()       { fs.writeFileSync(DATA_FILE,       JSON.stringify(dataStore,  null, 2)); }
-function saveAccounts()   { fs.writeFileSync(ACCOUNTS_FILE,   JSON.stringify(accounts,   null, 2)); }
-function saveSessions()   { fs.writeFileSync(SESSIONS_FILE,   JSON.stringify(sessions,   null, 2)); }
-function saveWorkspaces() { fs.writeFileSync(WORKSPACES_FILE, JSON.stringify(workspaces, null, 2)); }
+function saveData()        { fs.writeFileSync(DATA_FILE,        JSON.stringify(dataStore,    null, 2)); }
+function saveAccounts()    { fs.writeFileSync(ACCOUNTS_FILE,    JSON.stringify(accounts,     null, 2)); }
+function saveSessions()    { fs.writeFileSync(SESSIONS_FILE,    JSON.stringify(sessions,     null, 2)); }
+function saveWorkspaces()  { fs.writeFileSync(WORKSPACES_FILE,  JSON.stringify(workspaces,   null, 2)); }
+function saveVisibility()  { fs.writeFileSync(VISIBILITY_FILE,  JSON.stringify(kvVisibility, null, 2)); }
 
 // ── Generic helpers ──────────────────────────────────────────────────
 function hashPassword(password, salt) {
@@ -171,7 +177,7 @@ async function handleRequest(req, res) {
       if (accounts[normalizedEmail]) return json(res, 409, { error: 'Account already exists' });
 
       const { hash, salt } = hashPassword(password);
-      accounts[normalizedEmail] = { passwordHash: hash, salt, apiKeys: [], created: Date.now() };
+      accounts[normalizedEmail] = { passwordHash: hash, salt, apiKeys: [], publicId: crypto.randomBytes(32).toString('hex'), created: Date.now() };
       saveAccounts();
 
       const sessionToken = generateSession();
@@ -212,6 +218,7 @@ async function handleRequest(req, res) {
     const account = accounts[session.email];
     return json(res, 200, {
       email: session.email,
+      publicId: account.publicId,
       apiKeys: (account.apiKeys || []).map(k => ({
         key: k.key.slice(0, 8) + '...' + k.key.slice(-4),
         fullKey: k.key,
@@ -250,6 +257,7 @@ async function handleRequest(req, res) {
     if (!session) return json(res, 401, { error: 'Not authenticated' });
     const account = accounts[session.email];
     return json(res, 200, {
+      publicId: account.publicId,
       availableWorkspaces: Object.keys(workspaces[session.email] || {}),
       keys: (account.apiKeys || []).map(k => ({
         key: k.key,
@@ -294,13 +302,18 @@ async function handleRequest(req, res) {
     const store = dataStore[ownerInfo.email];
     const dataPath = pathname.replace('/api/data', '').replace(/^\//, '');
 
+    const visMap = kvVisibility[ownerInfo.email] || {};
+
     if (!dataPath && method === 'GET')
-      return json(res, 200, { keys: Object.keys(store), count: Object.keys(store).length });
+      return json(res, 200, {
+        keys: Object.keys(store).map(k => ({ key: k, visibility: visMap[k] || 'private' })),
+        count: Object.keys(store).length,
+      });
 
     if (dataPath && method === 'GET') {
       const key = decodeURIComponent(dataPath);
       if (!(key in store)) return json(res, 404, { error: 'Key not found' });
-      return json(res, 200, { key, value: store[key] });
+      return json(res, 200, { key, value: store[key], visibility: visMap[key] || 'private' });
     }
 
     if (dataPath && (method === 'PUT' || method === 'POST')) {
@@ -313,11 +326,32 @@ async function handleRequest(req, res) {
       } catch { return json(res, 400, { error: 'Invalid JSON body' }); }
     }
 
+    if (dataPath && method === 'PATCH') {
+      try {
+        const key = decodeURIComponent(dataPath);
+        if (!(key in store)) return json(res, 404, { error: 'Key not found' });
+        const body = JSON.parse(await readBody(req));
+        const { visibility } = body;
+        if (visibility !== 'public' && visibility !== 'private')
+          return json(res, 400, { error: 'visibility must be "public" or "private"' });
+        if (!kvVisibility[ownerInfo.email]) kvVisibility[ownerInfo.email] = {};
+        if (visibility === 'public') {
+          kvVisibility[ownerInfo.email][key] = 'public';
+        } else {
+          delete kvVisibility[ownerInfo.email][key];
+        }
+        saveVisibility();
+        return json(res, 200, { key, visibility });
+      } catch { return json(res, 400, { error: 'Invalid JSON body' }); }
+    }
+
     if (dataPath && method === 'DELETE') {
       const key = decodeURIComponent(dataPath);
       if (!(key in store)) return json(res, 404, { error: 'Key not found' });
       delete store[key];
+      if (kvVisibility[ownerInfo.email]) delete kvVisibility[ownerInfo.email][key];
       saveData();
+      saveVisibility();
       return json(res, 200, { key, deleted: true });
     }
 
@@ -580,6 +614,23 @@ async function handleRequest(req, res) {
     return json(res, 404, { error: 'Not found' });
   }
 
+  // ── Public KV read: GET /d2l/:publicId/:key ───────────────────────
+  // No authentication — only serves entries explicitly marked public.
+  if (method === 'GET' && pathname.startsWith('/d2l/')) {
+    const parts = pathname.slice('/d2l/'.length).split('/');
+    const publicId = parts[0];
+    const kvKey = decodeURIComponent(parts.slice(1).join('/'));
+    if (!publicId || !kvKey) return json(res, 404, { error: 'Not found' });
+    const accountEntry = Object.entries(accounts).find(([, a]) => a.publicId === publicId);
+    if (!accountEntry) return json(res, 404, { error: 'Not found' });
+    const [email] = accountEntry;
+    const isPublic = (kvVisibility[email] || {})[kvKey] === 'public';
+    if (!isPublic) return json(res, 404, { error: 'Not found' });
+    const store = dataStore[email] || {};
+    if (!(kvKey in store)) return json(res, 404, { error: 'Not found' });
+    return json(res, 200, { key: kvKey, value: store[kvKey] });
+  }
+
   // ── Static files ──────────────────────────────────────────────────
   if (method === 'GET') {
     const filePath = path.join(__dirname, pathname === '/' ? 'index.html' : pathname.slice(1));
@@ -595,6 +646,17 @@ async function handleRequest(req, res) {
 // ── Migrate legacy per-API-key data to per-account ────────────────────
 function migrateToAccountScoped() {
   let dirty = false;
+
+  // Ensure every account has a publicId
+  for (const [, account] of Object.entries(accounts)) {
+    if (!account.publicId) {
+      account.publicId = crypto.randomBytes(32).toString('hex');
+      dirty = true;
+    }
+  }
+  if (dirty) saveAccounts();
+  dirty = false;
+
   for (const [k, v] of Object.entries(dataStore)) {
     if (!k.startsWith('d2l_')) continue;
     const owner = findAccountByApiKey(k);

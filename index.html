@@ -342,6 +342,7 @@
       transition: border-color 0.2s;
     }
     .key-card:hover { border-color: var(--border-bright); }
+    .key-card-active { border-color: var(--accent) !important; }
     .key-info { flex: 1; min-width: 200px; }
     .key-label {
       font-weight: 600;
@@ -503,9 +504,7 @@
     .new-key-reveal .key-text { color: var(--text); word-break: break-all; }
     .new-key-reveal .warning { color: var(--text-dim); font-size: 0.78rem; margin-top: 8px; font-family: var(--font-body); }
 
-    /* ── Data browser ───────────────────────────────────── */
-    .data-browser { margin-top: 40px; }
-    .data-browser h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 16px; }
+    /* ── Data browser (legacy selectors, kept for table styles) ── */
     .data-browser-select { margin-bottom: 16px; }
     .data-table {
       width: 100%;
@@ -711,8 +710,6 @@
     }
 
     /* ── FS Browser ──────────────────────────────────────── */
-    .fs-browser { margin-top: 32px; }
-    .fs-browser h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 16px; }
     .fs-breadcrumb {
       display: flex;
       align-items: center;
@@ -752,18 +749,187 @@
     .fs-entry-meta { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-faint); }
     .fs-file-view {
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
+      border: none;
+      border-radius: 0;
+      padding: 16px 18px;
       font-family: var(--font-mono);
       font-size: 0.78rem;
       line-height: 1.65;
       color: var(--text-dim);
-      max-height: 340px;
       overflow-y: auto;
       white-space: pre-wrap;
       word-break: break-word;
     }
+
+    /* ── Dashboard pane layout ───────────────────────────── */
+    .dash-pane-layout {
+      display: flex;
+      gap: 28px;
+      align-items: flex-start;
+    }
+    .dash-left-pane {
+      width: 340px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 20px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+      padding-bottom: 40px;
+    }
+    .dash-right-pane {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .dash-pane-layout { flex-direction: column; }
+      .dash-left-pane { width: 100%; position: static; max-height: none; }
+    }
+
+    /* ── Browser panel ───────────────────────────────────── */
+    .browser-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .browser-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .browser-panel-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-faint);
+    }
+    .browser-key-badge {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent-bright);
+      background: rgba(108,92,231,0.1);
+      border: 1px solid rgba(108,92,231,0.2);
+      padding: 2px 10px;
+      border-radius: 100px;
+    }
+    .browser-body {
+      padding: 0;
+      overflow-y: auto;
+      max-height: 420px;
+    }
+    .browser-body-padded {
+      padding: 16px 18px;
+    }
+
+    /* ── Account ID bar ──────────────────────────────────── */
+    .account-id-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .account-id-label { color: var(--text-faint); flex-shrink: 0; font-weight: 500; }
+    .account-id-value {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      flex: 1;
+      word-break: break-all;
+    }
+    .account-id-hint {
+      font-size: 0.75rem;
+      color: var(--text-faint);
+      width: 100%;
+      font-family: var(--font-mono);
+    }
+
+    /* ── Key browse prompt (inline) ──────────────────────── */
+    .key-browse-prompt {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      flex-basis: 100%;
+      padding: 12px 20px;
+      background: var(--surface-2);
+      border-top: 1px solid var(--border);
+    }
+    .key-browse-prompt.open { display: flex; }
+    .key-browse-prompt-label { font-size: 0.8rem; color: var(--text-dim); }
+    .key-browse-input-row { display: flex; gap: 8px; }
+    .key-browse-input-row input {
+      flex: 1;
+      padding: 7px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      outline: none;
+    }
+    .key-browse-input-row input:focus { border-color: var(--accent); }
+    .key-browse-error { font-size: 0.78rem; color: var(--red); display: none; }
+    .key-browse-error.show { display: block; }
+
+    /* ── Visibility badge ────────────────────────────────── */
+    .vis-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 8px;
+      border-radius: 100px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      border: 1px solid;
+      user-select: none;
+    }
+    .vis-badge:hover { opacity: 0.75; }
+    .vis-badge.public  { background: var(--green-dim);  color: var(--green); border-color: rgba(0,210,160,0.25); }
+    .vis-badge.private { background: var(--surface-2);  color: var(--text-faint); border-color: var(--border); }
+    .public-url-link {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--accent-bright);
+      text-decoration: none;
+      opacity: 0.8;
+    }
+    .public-url-link:hover { opacity: 1; text-decoration: underline; }
+
+    /* ── Data table updates ──────────────────────────────── */
+    .data-table .vis-col  { width: 90px; }
+    .data-table .url-col  { width: 200px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Locked browser state ────────────────────────────── */
+    .browser-locked {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-faint);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .browser-locked .icon { font-size: 2rem; margin-bottom: 12px; }
+    .browser-locked p { font-size: 0.92rem; }
 
     /* ── Animations ──────────────────────────────────────── */
     @keyframes fadeUp {
@@ -1068,81 +1234,112 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       </div>
 
       <div id="dashKeys">
-      <div class="dash-header">
-        <h2>Your API Keys</h2>
-      </div>
+      <div class="dash-pane-layout">
 
-      <div id="newKeyReveal" class="new-key-reveal hidden">
-        <div class="label">✦ New API key created</div>
-        <div class="key-text" id="newKeyText"></div>
-        <div class="warning">Copy this key now — it will never be shown again.</div>
-        <button class="btn btn-green btn-sm" style="margin-top:12px" onclick="copyNewKey(this)">Copy key</button>
-      </div>
-
-      <div class="create-key-form">
-        <div class="form-group">
-          <label>Key label</label>
-          <input type="text" id="newKeyLabel" placeholder="e.g. My project, Production, Testing...">
-        </div>
-        <div class="create-key-perms">
-          <div class="perms-toggles">
-            <label class="perms-toggle-label">
-              <input type="checkbox" id="new-key-kv" checked>
-              KV store
-            </label>
-            <label class="perms-toggle-label">
-              <input type="checkbox" id="new-key-fs" checked onchange="toggleNewKeyWsList()">
-              File system (JJFS)
-            </label>
+        <!-- ─── Left pane: key management ─────────────────── -->
+        <div class="dash-left-pane">
+          <div class="dash-header">
+            <h2>API Keys</h2>
           </div>
-          <div id="new-key-wsblock">
-            <div class="perms-ws-header">
-              <span>Workspace restrictions <span class="perms-ws-hint">(empty = all workspaces)</span></span>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="addWsRow()">+ Add workspace</button>
+
+          <div id="newKeyReveal" class="new-key-reveal hidden">
+            <div class="label">✦ New API key created</div>
+            <div class="key-text" id="newKeyText"></div>
+            <div class="warning">Copy this key now — it will never be shown again.</div>
+            <button class="btn btn-green btn-sm" style="margin-top:12px" onclick="copyNewKey(this)">Copy key</button>
+          </div>
+
+          <div class="create-key-form">
+            <div class="form-group">
+              <label>Key label</label>
+              <input type="text" id="newKeyLabel" placeholder="e.g. My project, Production, Testing...">
             </div>
-            <div class="perms-ws-list" id="new-key-wslist"></div>
+            <div class="create-key-perms">
+              <div class="perms-toggles">
+                <label class="perms-toggle-label">
+                  <input type="checkbox" id="new-key-kv" checked>
+                  KV store
+                </label>
+                <label class="perms-toggle-label">
+                  <input type="checkbox" id="new-key-fs" checked onchange="toggleNewKeyWsList()">
+                  File system (JJFS)
+                </label>
+              </div>
+              <div id="new-key-wsblock">
+                <div class="perms-ws-header">
+                  <span>Workspace restrictions <span class="perms-ws-hint">(empty = all workspaces)</span></span>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="addWsRow()">+ Add workspace</button>
+                </div>
+                <div class="perms-ws-list" id="new-key-wslist"></div>
+              </div>
+            </div>
+            <div class="generate-row">
+              <button class="btn btn-primary" onclick="createKey()">Generate key</button>
+            </div>
           </div>
-        </div>
-        <div class="generate-row">
-          <button class="btn btn-primary" onclick="createKey()">Generate key</button>
-        </div>
-      </div>
 
-      <div class="key-list" id="keyList">
-        <div class="empty-state">
-          <div class="icon">🔑</div>
-          <p>No API keys yet. Create one to get started.</p>
-        </div>
-      </div>
+          <div class="key-list" id="keyList">
+            <div class="empty-state">
+              <div class="icon">🔑</div>
+              <p>No API keys yet. Create one to get started.</p>
+            </div>
+          </div>
+        </div><!-- /dash-left-pane -->
 
-      <div class="data-browser">
-        <h3>Data Browser</h3>
-        <div id="dataTableContainer">
-          <div class="empty-state">
-            <div class="icon">📦</div>
-            <p>No API keys yet — create one to start storing data.</p>
-          </div>
-        </div>
-      </div>
+        <!-- ─── Right pane: browser ────────────────────────── -->
+        <div class="dash-right-pane">
 
-      <div class="fs-browser">
-        <h3>File System Browser</h3>
-        <div class="data-browser-select">
-          <div class="form-group">
-            <label>Workspace</label>
-            <select id="fsWsSelect" onchange="fsWsChanged()">
-              <option value="">No workspaces yet…</option>
-            </select>
+          <!-- Account public ID -->
+          <div class="account-id-bar" id="accountIdBar" style="display:none">
+            <span class="account-id-label">Account ID</span>
+            <span class="account-id-value" id="accountIdValue">—</span>
+            <button class="btn btn-ghost btn-sm" onclick="copyAccountId(this)" style="flex-shrink:0">Copy</button>
+            <span class="account-id-hint">Public KV links: /d2l/&lt;id&gt;/&lt;key&gt;</span>
           </div>
-        </div>
-        <div id="fsPathBar"></div>
-        <div id="fsEntries">
-          <div class="empty-state">
-            <div class="icon">🗂️</div>
-            <p>No file system data yet.</p>
+
+          <!-- Locked state (no key selected yet) -->
+          <div class="browser-locked" id="browserLocked">
+            <div class="icon">🔍</div>
+            <p>Click <strong>Browse</strong> on an API key to explore your data and files.</p>
           </div>
-        </div>
-      </div>
+
+          <!-- KV Data browser -->
+          <div class="browser-panel hidden" id="kvBrowserPanel">
+            <div class="browser-panel-header">
+              <span class="browser-panel-title">KV Data</span>
+              <span class="browser-key-badge" id="kvBrowserKeyBadge"></span>
+            </div>
+            <div class="browser-body" id="dataTableContainer">
+              <div class="empty-state">
+                <div class="icon">📦</div>
+                <p>No data yet.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- FS browser -->
+          <div class="browser-panel hidden" id="fsBrowserPanel">
+            <div class="browser-panel-header">
+              <span class="browser-panel-title">File System</span>
+              <div style="display:flex;align-items:center;gap:10px">
+                <select id="fsWsSelect" onchange="fsWsChanged()"
+                  style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:0.82rem;outline:none;font-family:var(--font-body)">
+                  <option value="">No workspaces…</option>
+                </select>
+                <span class="browser-key-badge" id="fsBrowserKeyBadge"></span>
+              </div>
+            </div>
+            <div id="fsPathBar" style="padding:0 18px;border-bottom:1px solid var(--border)"></div>
+            <div class="browser-body" id="fsEntries">
+              <div class="empty-state">
+                <div class="icon">🗂️</div>
+                <p>No file system data yet.</p>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /dash-right-pane -->
+      </div><!-- /dash-pane-layout -->
       </div><!-- /dashKeys -->
 
       <div id="dashPlayground" class="hidden">
@@ -1200,6 +1397,9 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
   let authMode = 'signup';
   let userKeys = [];
   let availableWorkspaces = [];
+  let accountPublicId = null;   // account's publicId (for public KV URLs)
+  let browserApiKey   = null;   // API key currently unlocked in the browser
+  let browserKeyLabel = null;   // label of the above key
 
   const API = ''; // relative — same origin
 
@@ -1352,9 +1552,15 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       const data = await res.json();
       userKeys = data.keys || [];
       availableWorkspaces = data.availableWorkspaces || [];
+      accountPublicId = data.publicId || null;
+      // Show account ID bar
+      if (accountPublicId) {
+        const bar = document.getElementById('accountIdBar');
+        const val = document.getElementById('accountIdValue');
+        if (bar) bar.style.display = '';
+        if (val) val.textContent = accountPublicId;
+      }
       renderKeys();
-      browseData();
-      loadFsWorkspaces();
     } catch (err) {
       console.error('Failed to load keys:', err);
     }
@@ -1444,13 +1650,14 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       container.innerHTML = '<div class="empty-state"><div class="icon">🔑</div><p>No API keys yet. Create one to get started.</p></div>';
       return;
     }
-    container.innerHTML = userKeys.map(k => {
+    container.innerHTML = userKeys.map((k, i) => {
       const created = new Date(k.created).toLocaleDateString();
       const lastUsed = k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never';
       const masked = k.key.slice(0, 8) + '····' + k.key.slice(-6);
       const perms = k.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} };
+      const isActive = browserApiKey !== null && userKeys.findIndex(x => x.key === browserApiKey) === i;
       return `
-        <div class="key-card">
+        <div class="key-card${isActive ? ' key-card-active' : ''}" id="kcard-${i}">
           <div class="key-info">
             <div class="key-label">${escHtml(k.label)}</div>
             <div class="key-value">${masked}</div>
@@ -1458,15 +1665,26 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
               <span>Created ${created}</span>
               <span>Last used: ${lastUsed}</span>
               <span>${k.entryCount} KV entries</span>
-              <span>${k.wsCount || 0} workspace${(k.wsCount || 0) !== 1 ? 's' : ''}</span>
-              <span>${k.fsFileCount || 0} FS file${(k.fsFileCount || 0) !== 1 ? 's' : ''}</span>
+              <span>${k.wsCount || 0} ws</span>
+              <span>${k.fsFileCount || 0} files</span>
               <button class="key-perms-toggle" onclick="toggleKeyPerms(this)">Privileges &#9662;</button>
             </div>
           </div>
           <div class="key-actions">
-            <button class="btn btn-danger btn-sm" onclick="deleteKey('${k.key}')">Revoke</button>
+            <button class="btn btn-ghost btn-sm" onclick="openBrowsePrompt(${i})">Browse</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteKey('${escHtml(k.key)}')">Revoke</button>
           </div>
           <div class="key-perms-detail">${renderPermsDetail(perms)}</div>
+          <div class="key-browse-prompt" id="kbrowse-${i}">
+            <span class="key-browse-prompt-label">Enter this API key to open the data browser</span>
+            <div class="key-browse-input-row">
+              <input type="password" id="kbrowse-input-${i}" placeholder="d2l_..." autocomplete="off"
+                     onkeydown="if(event.key==='Enter')openBrowser(${i})">
+              <button class="btn btn-primary btn-sm" onclick="openBrowser(${i})">Open</button>
+              <button class="btn btn-ghost btn-sm" onclick="closeBrowsePrompt(${i})">Cancel</button>
+            </div>
+            <span class="key-browse-error" id="kbrowse-err-${i}">Invalid key — must match this key exactly.</span>
+          </div>
         </div>
       `;
     }).join('');
@@ -1506,6 +1724,69 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     btn.textContent = open ? 'Privileges \u25b4' : 'Privileges \u25be';
   }
 
+  // ── Browser unlock flow ───────────────────────────────
+  function openBrowsePrompt(idx) {
+    // Close any other open prompts
+    document.querySelectorAll('.key-browse-prompt.open').forEach(el => el.classList.remove('open'));
+    const prompt = document.getElementById('kbrowse-' + idx);
+    if (prompt) {
+      prompt.classList.add('open');
+      const input = document.getElementById('kbrowse-input-' + idx);
+      if (input) { input.value = ''; input.focus(); }
+      const err = document.getElementById('kbrowse-err-' + idx);
+      if (err) err.classList.remove('show');
+    }
+  }
+
+  function closeBrowsePrompt(idx) {
+    const prompt = document.getElementById('kbrowse-' + idx);
+    if (prompt) prompt.classList.remove('open');
+  }
+
+  function openBrowser(idx) {
+    const k = userKeys[idx];
+    if (!k) return;
+    const input = document.getElementById('kbrowse-input-' + idx);
+    const entered = input ? input.value.trim() : '';
+    const err = document.getElementById('kbrowse-err-' + idx);
+    if (entered !== k.key) {
+      if (err) err.classList.add('show');
+      return;
+    }
+    browserApiKey   = entered;
+    browserKeyLabel = k.label;
+    closeBrowsePrompt(idx);
+    // Show browser panels, hide locked state
+    document.getElementById('browserLocked').style.display = 'none';
+    document.getElementById('kvBrowserPanel').classList.remove('hidden');
+    document.getElementById('fsBrowserPanel').classList.remove('hidden');
+    document.getElementById('kvBrowserKeyBadge').textContent = k.label;
+    document.getElementById('fsBrowserKeyBadge').textContent = k.label;
+    // Also pre-fill playground key
+    const pgInput = document.getElementById('pgKeyInput');
+    if (pgInput) pgInput.value = entered;
+    renderKeys();
+    browseData();
+    loadFsWorkspaces();
+  }
+
+  function closeBrowser() {
+    browserApiKey   = null;
+    browserKeyLabel = null;
+    document.getElementById('browserLocked').style.display = '';
+    document.getElementById('kvBrowserPanel').classList.add('hidden');
+    document.getElementById('fsBrowserPanel').classList.add('hidden');
+    renderKeys();
+  }
+
+  function copyAccountId(btn) {
+    if (!accountPublicId) return;
+    navigator.clipboard.writeText(accountPublicId).then(() => {
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    });
+  }
+
   function addWsRow(name = '', path = '') {
     const list = document.getElementById('new-key-wslist');
     if (!list) return;
@@ -1543,39 +1824,66 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
 
   // ── Data Browser ──────────────────────────────────────────────
   async function browseData() {
-    const apiKey = userKeys[0]?.key;
+    const apiKey = browserApiKey;
     const container = document.getElementById('dataTableContainer');
     if (!apiKey) {
-      container.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>No API keys yet — create one to start storing data.</p></div>';
+      container.innerHTML = '<div class="empty-state" style="padding:40px 24px"><div class="icon">📦</div><p>Select an API key to browse data.</p></div>';
       return;
     }
+    container.innerHTML = '<div style="padding:24px;color:var(--text-faint);font-size:0.85rem">Loading…</div>';
     try {
       const res = await fetch(`${API}/api/data`, { headers: { 'X-API-Key': apiKey } });
       const listing = await res.json();
       if (!listing.keys || listing.keys.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No KV data stored yet.</p></div>';
+        container.innerHTML = '<div class="empty-state" style="padding:40px 24px"><div class="icon">📭</div><p>No KV data stored yet.</p></div>';
         return;
       }
-      const entries = await Promise.all(listing.keys.map(async key => {
+      // listing.keys is now [{key, visibility}, ...]
+      const entries = await Promise.all(listing.keys.map(async ({ key, visibility }) => {
         const r = await fetch(`${API}/api/data/${encodeURIComponent(key)}`, { headers: { 'X-API-Key': apiKey } });
         const d = await r.json();
-        return { key, value: d.value };
+        return { key, value: d.value, visibility: d.visibility || visibility || 'private' };
       }));
-      container.innerHTML = `
-        <table class="data-table">
-          <thead><tr><th>Key</th><th>Value</th></tr></thead>
-          <tbody>
-            ${entries.map(e => `
-              <tr>
-                <td class="key-col">${escHtml(e.key)}</td>
-                <td class="value-col" title="${escHtml(JSON.stringify(e.value))}">${escHtml(JSON.stringify(e.value))}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
+      const rows = entries.map(e => {
+        const valStr = JSON.stringify(e.value);
+        const truncated = valStr.length > 80 ? valStr.slice(0, 80) + '\u2026' : valStr;
+        const isPublic = e.visibility === 'public';
+        const nextVis  = isPublic ? 'private' : 'public';
+        const visBadge = '<span class="vis-badge ' + e.visibility + '" title="Click to toggle" ' +
+          'onclick="toggleVisibility(' + JSON.stringify(e.key) + ',' + JSON.stringify(nextVis) + ')">' +
+          e.visibility + '</span>';
+        const publicUrl = isPublic && accountPublicId
+          ? '<a class="public-url-link" href="/d2l/' + accountPublicId + '/' + encodeURIComponent(e.key) + '" target="_blank"' +
+            ' title="/d2l/' + accountPublicId + '/' + escHtml(e.key) + '">/d2l/\u2026/' + escHtml(e.key) + '</a>'
+          : '<span style="color:var(--text-faint);font-size:0.72rem;font-family:var(--font-mono)">\u2014</span>';
+        return '<tr>' +
+          '<td class="key-col" style="font-family:var(--font-mono);font-size:0.8rem">' + escHtml(e.key) + '</td>' +
+          '<td class="value-col" style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-dim)" title="' + escHtml(valStr) + '">' + escHtml(truncated) + '</td>' +
+          '<td class="vis-col">' + visBadge + '</td>' +
+          '<td class="url-col">' + publicUrl + '</td>' +
+          '</tr>';
+      }).join('');
+      container.innerHTML =
+        '<table class="data-table" style="font-size:0.85rem">' +
+        '<thead><tr><th>Key</th><th>Value</th><th class="vis-col">Visibility</th><th class="url-col">Public URL</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+        '</table>';
     } catch {
-      container.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data.</p></div>';
+      container.innerHTML = '<div class="empty-state" style="padding:40px 24px"><div class="icon">⚠️</div><p>Failed to load data.</p></div>';
+    }
+  }
+
+  async function toggleVisibility(key, newVisibility) {
+    if (!browserApiKey) return;
+    try {
+      await fetch(`${API}/api/data/${encodeURIComponent(key)}`, {
+        method: 'PATCH',
+        headers: { 'X-API-Key': browserApiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibility: newVisibility }),
+      });
+      browseData();
+    } catch (err) {
+      console.error('Failed to toggle visibility:', err);
     }
   }
 
@@ -1589,8 +1897,8 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     const entriesEl = document.getElementById('fsEntries');
     document.getElementById('fsPathBar').innerHTML = '';
     if (!availableWorkspaces.length) {
-      sel.innerHTML = '<option value="">No workspaces yet…</option>';
-      entriesEl.innerHTML = '<div class="empty-state"><div class="icon">🗂️</div><p>No file system data yet.</p></div>';
+      sel.innerHTML = '<option value="">No workspaces yet\u2026</option>';
+      entriesEl.innerHTML = '<div class="empty-state" style="padding:40px 24px"><div class="icon">🗂️</div><p>No file system data yet.</p></div>';
       return;
     }
     sel.innerHTML = availableWorkspaces.map(w =>
@@ -1611,29 +1919,29 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     if (!ws) return;
     fsBrowserWs = ws;
     const pathStr = fsBrowserPath.join('/');
-    const url = '/api/fs/' + encodeURIComponent(ws) + (pathStr ? '/' + pathStr : '');
+    const fetchUrl = '/api/fs/' + encodeURIComponent(ws) + (pathStr ? '/' + pathStr : '');
     renderFsBreadcrumb();
     document.getElementById('fsEntries').innerHTML =
-      '<p style="color:var(--text-faint);font-size:0.85rem;padding:12px 0">Loading…</p>';
+      '<div style="color:var(--text-faint);font-size:0.85rem;padding:16px 18px">Loading\u2026</div>';
     try {
-      const res  = await fetch(url, { credentials: 'include' });
-      const text = await res.text();
+      const headers = browserApiKey ? { 'X-API-Key': browserApiKey } : {};
+      const fetchOpts = browserApiKey ? { headers } : { credentials: 'include' };
+      const res  = await fetch(fetchUrl, fetchOpts);
+      const rawText = await res.text();
       let data = null;
-      try { data = JSON.parse(text); } catch {}
+      try { data = JSON.parse(rawText); } catch {}
       if (data && data.type === 'directory') {
         renderFsDirectory(data.entries);
       } else {
-        // file content — pretty-print if valid JSON
-        let display = text;
-        if (data !== null && typeof data === 'object') {
-          try { display = JSON.stringify(data, null, 2); } catch {}
-        }
+        // file content — pretty-print if valid JSON, otherwise raw
+        let display = rawText;
+        try { display = JSON.stringify(JSON.parse(rawText), null, 2); } catch {}
         document.getElementById('fsEntries').innerHTML =
-          '<div class="fs-file-view">' + escHtml(display) + '</div>';
+          '<pre class="fs-file-view" style="margin:0;border-radius:0;border:none">' + escHtml(display) + '</pre>';
       }
     } catch {
       document.getElementById('fsEntries').innerHTML =
-        '<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load.</p></div>';
+        '<div class="empty-state" style="padding:40px 24px"><div class="icon">⚠️</div><p>Failed to load.</p></div>';
     }
   }
 
@@ -1641,7 +1949,10 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     const bar = document.getElementById('fsPathBar');
     if (!fsBrowserWs) { bar.innerHTML = ''; return; }
     const parts = [fsBrowserWs, ...fsBrowserPath];
-    bar.innerHTML = '<div class="fs-breadcrumb">' +
+    bar.innerHTML = '<div class="fs-breadcrumb" style="margin:0;border-radius:0;border:none">' +
+      (fsBrowserPath.length > 0
+        ? '<span class="fs-bc-part" onclick="fsGoTo(-1)" title="Go to root" style="opacity:0.6">\u2190</span><span class="fs-bc-sep">&nbsp;</span>'
+        : '') +
       parts.map((seg, i) => {
         const sep = i > 0 ? '<span class="fs-bc-sep">/</span>' : '';
         return sep + '<span class="fs-bc-part" onclick="fsGoTo(' + (i - 1) + ')">' + escHtml(seg) + '</span>';
@@ -1652,10 +1963,9 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
   function renderFsDirectory(entries) {
     const el = document.getElementById('fsEntries');
     if (!entries || entries.length === 0) {
-      el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>Empty directory.</p></div>';
+      el.innerHTML = '<div class="empty-state" style="padding:32px 24px"><div class="icon">📭</div><p>Empty directory.</p></div>';
       return;
     }
-    // dirs first, then files, both alphabetical
     const sorted = [...entries].sort((a, b) => {
       if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
       return a.name.localeCompare(b.name);
@@ -1663,28 +1973,29 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     const rows = sorted.map(e => {
       const isDir = e.type === 'directory';
       const icon  = isDir ? '📁' : '📄';
-      const meta  = isDir
-        ? (e.fileCount + ' file' + (e.fileCount !== 1 ? 's' : ''))
-        : (e.size !== undefined ? e.size + ' B' : '');
+      let meta = '';
+      if (isDir) {
+        meta = e.fileCount + ' file' + (e.fileCount !== 1 ? 's' : '');
+      } else if (e.size !== undefined) {
+        meta = e.size >= 1024 ? (e.size / 1024).toFixed(1) + ' KB' : e.size + ' B';
+      }
       const nameClass = 'fs-entry-name' + (isDir ? ' fs-entry-dir' : '');
-      const handler = 'fsNavigate(' + JSON.stringify(e.name) + ',' + JSON.stringify(e.type) + ')';
-    return '<div class="fs-entry" onclick="' + handler.replace(/"/g, '&quot;') + '">' +
-        '<span>' + icon + '</span>' +
+      const handler = 'fsNavigate(' + JSON.stringify(e.name) + ')';
+      return '<div class="fs-entry" onclick="' + handler.replace(/"/g, '&quot;') + '">' +
+        '<span style="font-size:1rem">' + icon + '</span>' +
         '<span class="' + nameClass + '">' + escHtml(e.name) + (isDir ? '/' : '') + '</span>' +
         '<span class="fs-entry-meta">' + escHtml(meta) + '</span>' +
         '</div>';
     });
-    el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">' +
-      rows.join('') + '</div>';
+    el.innerHTML = rows.join('');
   }
 
-  function fsNavigate(name, type) {
+  function fsNavigate(name) {
     fsBrowserPath.push(name);
     fsBrowse();
   }
 
   function fsGoTo(depth) {
-    // depth -1 = workspace root; 0 = first path segment; etc.
     fsBrowserPath = depth < 0 ? [] : fsBrowserPath.slice(0, depth + 1);
     fsBrowse();
   }
