@@ -790,21 +790,24 @@ curl -X PUT https://data2l.ink/api/fs/default/notes/todo.md \
             <span class="endpoint">/api/fs/:workspace/*path — read a file or dir</span>
           </div>
           <pre><span class="comment">// Read a file — returns raw text</span>
-GET <span class="str">/api/fs/default/notes/todo.md</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
+})
+.then(<span class="key">r</span> => r.text())
+.then(console.log)
 <span class="comment">// → "# My Notes\n- Item 1"</span>
 
-<span class="comment">// Read lines 10–20 only</span>
-GET <span class="str">/api/fs/default/notes/todo.md?start=10&amp;end=20</span>
+<span class="comment">// Optional: read lines 10–20 only  →  ?start=10&amp;end=20</span>
 
 <span class="comment">// List a directory — returns JSON</span>
-GET <span class="str">/api/fs/default/notes</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
+})
+.then(<span class="key">r</span> => r.json())
 <span class="comment">// → { type: "directory", entries: [
-//     { name: "todo.md",  type: "file",      size: 20 },
-//     { name: "archive",  type: "directory",  fileCount: 3 }
-//   ] }</span>
-
-<span class="comment">// List workspace root</span>
-GET <span class="str">/api/fs/default</span></pre>
+//     { name: "todo.md", type: "file",      size: 20 },
+//     { name: "archive", type: "directory", fileCount: 3 }
+//   ] }</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
@@ -831,7 +834,11 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>
             <span class="endpoint">/api/fs/:workspace/*path — delete</span>
           </div>
           <pre><span class="comment">// Delete a file or directory</span>
-DELETE <span class="str">/api/fs/default/notes/todo.md</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
+  <span class="key">method</span>: <span class="str">'DELETE'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
+})
+<span class="comment">// → { success: true, result: "Deleted: default:/notes/todo.md" }</span>
 
 <span class="comment">// Manage workspaces</span>
 POST   <span class="str">/api/fs/workspaces</span>  { <span class="key">name</span>: <span class="str">'my-project'</span> }
