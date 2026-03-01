@@ -203,6 +203,7 @@
     .method-get { background: var(--green-dim); color: var(--green); }
     .method-delete { background: var(--red-dim); color: var(--red); }
     .method-list { background: rgba(108, 92, 231, 0.15); color: var(--accent-bright); }
+    .method-patch { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
     .code-card-header .endpoint {
       font-family: var(--font-mono);
       font-size: 0.82rem;
@@ -785,6 +786,7 @@
       overflow-y: auto;
       overflow-x: hidden;
       padding: 12px 0 16px;
+      scrollbar-gutter: stable;
     }
     .dash-right-pane {
       flex: 1;
@@ -795,6 +797,7 @@
       overflow-y: auto;
       overflow-x: hidden;
       padding: 12px 0 16px;
+      scrollbar-gutter: stable;
     }
     @media (max-width: 900px) {
       .dash-pane-layout { flex-direction: column; overflow-y: auto; }
@@ -1053,6 +1056,38 @@ fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
   }
 })
 <span class="comment">// → { key: 'myapp', deleted: true }</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-patch">PATCH</span>
+            <span class="endpoint">/api/data/:key</span>
+          </div>
+          <pre><span class="comment">// Make a key public (or private)</span>
+fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
+    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+  },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">visibility</span>: <span class="str">'public'</span>
+  })
+})
+<span class="comment">// → { key: 'myapp', visibility: 'public' }</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-get">GET</span>
+            <span class="endpoint">/d2l/:accountId/:key</span>
+          </div>
+          <pre><span class="comment">// Public link — no API key needed</span>
+<span class="comment">// Share this URL or open it in any browser:</span>
+fetch(<span class="str">'/d2l/your_account_id/myapp'</span>)
+  .then(<span class="key">r</span> => r.json())
+  .then(<span class="key">data</span> => {
+    console.log(data.value)
+    <span class="comment">// → { users: 42, status: 'live' }</span>
+  })</pre>
         </div>
       </div>
     </section>
