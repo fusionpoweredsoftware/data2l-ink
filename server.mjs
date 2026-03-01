@@ -231,7 +231,8 @@ async function handleRequest(req, res) {
       const { label } = JSON.parse(await readBody(req));
       const apiKey = generateKey();
       const account = accounts[session.email];
-      account.apiKeys.push({ key: apiKey, label: label || 'Untitled', created: Date.now(), lastUsed: null });
+      account.apiKeys.push({ key: apiKey, label: label || 'Untitled', created: Date.now(), lastUsed: null,
+        permissions: { kv: true, fs: true, workspaces: '*', paths: {} } });
       provisionAccount(session.email);
       saveAccounts();
       return json(res, 201, { key: apiKey, label: label || 'Untitled' });
@@ -243,11 +244,13 @@ async function handleRequest(req, res) {
     if (!session) return json(res, 401, { error: 'Not authenticated' });
     const account = accounts[session.email];
     return json(res, 200, {
+      availableWorkspaces: Object.keys(workspaces[session.email] || {}),
       keys: (account.apiKeys || []).map(k => ({
         key: k.key,
         label: k.label,
         created: k.created,
         lastUsed: k.lastUsed,
+        permissions: k.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} },
         entryCount: Object.keys(dataStore[session.email] || {}).length,
         wsCount: Object.keys(workspaces[session.email] || {}).length,
         fsFileCount: Object.values(workspaces[session.email] || {}).reduce((sum, ws) => sum + countFiles(ws), 0),
@@ -267,6 +270,26 @@ async function handleRequest(req, res) {
     return json(res, 200, { success: true });
   }
 
+  if (pathname.startsWith('/keys/') && method === 'PATCH') {
+    const session = getSessionFromReq(req);
+    if (!session) return json(res, 401, { error: 'Not authenticated' });
+    const targetKey = pathname.slice(6);
+    const account = accounts[session.email];
+    const keyObj = account.apiKeys.find(k => k.key === targetKey);
+    if (!keyObj) return json(res, 404, { error: 'API key not found' });
+    try {
+      const body = JSON.parse(await readBody(req));
+      keyObj.permissions = {
+        kv: body.kv !== false,
+        fs: body.fs !== false,
+        workspaces: Array.isArray(body.workspaces) ? body.workspaces : '*',
+        paths: (body.paths && typeof body.paths === 'object') ? body.paths : {},
+      };
+      saveAccounts();
+      return json(res, 200, { success: true, permissions: keyObj.permissions });
+    } catch { return json(res, 400, { error: 'Invalid JSON body' }); }
+  }
+
   // ── Flat KV store (API-key authenticated) ──────────────────────────
   if (pathname.startsWith('/api/data')) {
     const apiKey = getApiKeyFromReq(req);
@@ -277,6 +300,9 @@ async function handleRequest(req, res) {
 
     const keyObj = ownerInfo.account.apiKeys.find(k => k.key === apiKey);
     if (keyObj) { keyObj.lastUsed = Date.now(); saveAccounts(); }
+
+    const permsKv = keyObj?.permissions ?? { kv: true };
+    if (!permsKv.kv) return json(res, 403, { error: 'This API key does not have KV store access' });
 
     provisionAccount(ownerInfo.email);
     const store = dataStore[ownerInfo.email];
@@ -322,6 +348,9 @@ async function handleRequest(req, res) {
 
     const keyObj = ownerInfo.account.apiKeys.find(k => k.key === apiKey);
     if (keyObj) { keyObj.lastUsed = Date.now(); saveAccounts(); }
+
+    const perms = keyObj?.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} };
+    if (!perms.fs) return json(res, 403, { error: 'This API key does not have filesystem access' });
 
     provisionAccount(ownerInfo.email);
     const wsForKey = workspaces[ownerInfo.email];
@@ -394,10 +423,9 @@ async function handleRequest(req, res) {
 
     // GET /api/fs/workspaces — list workspaces for this API key
     if (pathname === '/api/fs/workspaces' && method === 'GET') {
-      const wsList = Object.entries(wsForKey).map(([name, tree]) => ({
-        name,
-        fileCount: countFiles(tree),
-      }));
+      const wsList = Object.entries(wsForKey)
+        .filter(([name]) => perms.workspaces === '*' || perms.workspaces.includes(name))
+        .map(([name, tree]) => ({ name, fileCount: countFiles(tree) }));
       return json(res, 200, { workspaces: wsList, count: wsList.length });
     }
 
@@ -468,6 +496,15 @@ async function handleRequest(req, res) {
       const wsName    = slashIdx === -1 ? fsSubpath : fsSubpath.slice(0, slashIdx);
       const filePath  = slashIdx === -1 ? '/' : fsSubpath.slice(slashIdx);
       if (!wsName) return json(res, 404, { error: 'Not found' });
+
+      if (perms.workspaces !== '*' && !perms.workspaces.includes(wsName))
+        return json(res, 403, { error: `This API key does not have access to workspace: ${wsName}` });
+      const pathRestriction = (perms.paths || {})[wsName];
+      if (pathRestriction && pathRestriction !== '/') {
+        const allowed = pathRestriction.replace(/\/$/, '');
+        if (filePath !== allowed && !filePath.startsWith(allowed + '/'))
+          return json(res, 403, { error: `This API key is restricted to ${allowed} in workspace: ${wsName}` });
+      }
 
       if (method === 'GET') {
         if (!wsForKey[wsName]) return json(res, 404, { error: `Workspace not found: ${wsName}` });
