@@ -466,13 +466,16 @@
     .perms-badge { padding: 1px 8px; border-radius: 100px; font-size: 0.75rem; font-family: var(--font-mono); }
     .perms-badge.on  { background: rgba(74,222,128,0.12); color: #4ade80; }
     .perms-badge.off { background: var(--surface-2); color: var(--text-faint); }
-    .perms-ws-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     .perms-ws-chip {
       background: var(--surface-2); border: 1px solid var(--border);
       border-radius: 4px; padding: 1px 8px;
       font-family: var(--font-mono); font-size: 0.75rem; color: var(--text);
     }
     .perms-path-chip { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-faint); }
+    .key-perms-ws-block { align-items: flex-start; }
+    .key-perms-ws-label { flex-shrink: 0; }
+    .perms-ws-rows { display: flex; flex-direction: column; gap: 4px; }
+    .perms-ws-row-item { display: flex; align-items: center; gap: 6px; }
 
     .create-key-form {
       display: flex;
@@ -1474,14 +1477,14 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-badge on">All</span></div>';
       } else if (Array.isArray(p.workspaces) && p.workspaces.length) {
         const paths = p.paths || {};
-        const chips = p.workspaces.map(ws => {
+        const rows = p.workspaces.map(ws => {
           const pv = paths[ws];
           const pathChips = pv
             ? (Array.isArray(pv) ? pv : [pv]).map(p => '<span class="perms-path-chip">→ ' + escHtml(p) + '</span>').join('')
             : '';
-          return '<span class="perms-ws-chip">' + escHtml(ws) + '</span>' + pathChips;
+          return '<div class="perms-ws-row-item"><span class="perms-ws-chip">' + escHtml(ws) + '</span>' + pathChips + '</div>';
         }).join('');
-        wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-ws-chips">' + chips + '</span></div>';
+        wsSection = '<div class="key-perms-row key-perms-ws-block"><span class="key-perms-ws-label">Workspaces:</span><div class="perms-ws-rows">' + rows + '</div></div>';
       } else {
         wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-badge off">None</span></div>';
       }
