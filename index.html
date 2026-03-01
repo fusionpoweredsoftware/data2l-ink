@@ -178,6 +178,8 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
     .code-card-header {
       padding: 14px 20px;
@@ -210,6 +212,7 @@
       line-height: 1.7;
       color: var(--text-dim);
       overflow-x: auto;
+      flex: 1;
     }
     .code-card pre .key { color: var(--accent-bright); }
     .code-card pre .str { color: var(--green); }
@@ -280,7 +283,7 @@
       color: var(--text-dim);
       margin-bottom: 6px;
     }
-    .form-group input, .form-group select {
+    .form-group input, .form-group select, .form-group textarea {
       width: 100%;
       padding: 11px 14px;
       background: var(--surface-2);
@@ -292,7 +295,7 @@
       outline: none;
       transition: border-color 0.2s;
     }
-    .form-group input:focus { border-color: var(--accent); }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); outline: none; }
     .form-error { color: var(--red); font-size: 0.82rem; margin-top: 6px; display: none; }
     .form-error.show { display: block; }
     .auth-toggle {
@@ -353,27 +356,7 @@
       padding: 4px 10px;
       border-radius: 6px;
       display: inline-block;
-      cursor: pointer;
-      transition: color 0.2s;
-      position: relative;
     }
-    .key-value:hover { color: var(--text); }
-    .key-value .copy-hint {
-      position: absolute;
-      top: -28px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--surface-3);
-      border: 1px solid var(--border-bright);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.72rem;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s;
-    }
-    .key-value:hover .copy-hint { opacity: 1; }
     .key-meta {
       display: flex;
       gap: 16px;
@@ -383,14 +366,129 @@
       font-family: var(--font-mono);
     }
     .key-actions { display: flex; gap: 8px; }
+    .create-key-perms {
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+      margin-top: 4px;
+    }
+    .perms-toggles {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 14px;
+    }
+    .perms-toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .perms-ws-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+    .perms-ws-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+    }
+    .perms-ws-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+      font-family: var(--font-mono);
+    }
+    .perms-ws-row input[type="checkbox"] { flex-shrink: 0; }
+    .perms-ws-name { flex: 0 0 140px; }
+    .perms-path-label { color: var(--text-faint); font-size: 0.78rem; margin-right: 4px; }
+    .perms-path-input {
+      flex: 1;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--text);
+    }
+    .perms-path-input:focus { outline: none; border-color: var(--accent-bright); }
+    .perms-ws-hint { color: var(--text-faint); font-size: 0.78rem; font-weight: 400; }
+    .perms-ws-name-input {
+      flex: 0 0 140px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+    .perms-ws-name-input:focus { outline: none; border-color: var(--accent-bright); }
+    .perms-ws-remove {
+      background: none;
+      border: none;
+      color: var(--text-faint);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+    .perms-ws-remove:hover { color: var(--danger); }
+
+    /* Key card — privileges toggle */
+    .key-perms-toggle {
+      background: none; border: none; padding: 0;
+      color: var(--accent-bright); font-size: 0.78rem;
+      cursor: pointer; font-family: var(--font-body);
+    }
+    .key-perms-toggle:hover { text-decoration: underline; }
+
+    /* Expandable privileges panel */
+    .key-perms-detail {
+      display: none;
+      flex-basis: 100%; width: 100%;
+      border-top: 1px solid var(--border);
+      padding-top: 12px; margin-top: 4px;
+      font-size: 0.82rem; color: var(--text-dim);
+    }
+    .key-perms-detail.open { display: block; }
+    .key-perms-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .perms-badge { padding: 1px 8px; border-radius: 100px; font-size: 0.75rem; font-family: var(--font-mono); }
+    .perms-badge.on  { background: rgba(74,222,128,0.12); color: #4ade80; }
+    .perms-badge.off { background: var(--surface-2); color: var(--text-faint); }
+    .perms-ws-chip {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 8px;
+      font-family: var(--font-mono); font-size: 0.75rem; color: var(--text);
+    }
+    .perms-path-chip { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-faint); }
+    .key-perms-ws-block { align-items: flex-start; }
+    .key-perms-ws-label { flex-shrink: 0; }
+    .perms-ws-rows { display: flex; flex-direction: column; gap: 4px; }
+    .perms-ws-row-item { display: flex; align-items: center; gap: 6px; }
 
     .create-key-form {
       display: flex;
-      gap: 10px;
+      flex-direction: column;
+      gap: 0;
       margin-bottom: 32px;
-      align-items: flex-end;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
     }
-    .create-key-form .form-group { margin-bottom: 0; flex: 1; }
+    .create-key-form .form-group { margin-bottom: 14px; }
+    .create-key-form .generate-row { display: flex; justify-content: flex-end; margin-top: 4px; }
 
     .new-key-reveal {
       background: var(--green-dim);
@@ -451,6 +549,132 @@
     .empty-state .icon { font-size: 2rem; margin-bottom: 12px; }
     .empty-state p { font-size: 0.92rem; }
 
+    /* ── Dashboard tabs ──────────────────────────────── */
+    .dash-tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+    }
+    .dash-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .dash-tab:hover { color: var(--text); }
+    .dash-tab.active { color: var(--accent-bright); border-bottom-color: var(--accent-bright); }
+
+    /* ── Playground ──────────────────────────────────── */
+    .pg-key-row { margin-bottom: 24px; }
+    .pg-section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-faint);
+      margin-bottom: 10px;
+    }
+    .op-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+    .op-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 13px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-family: var(--font-body);
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .op-card:hover { border-color: var(--border-bright); color: var(--text); }
+    .op-card.active { border-color: var(--accent); background: rgba(108,92,231,0.1); color: var(--accent-bright); }
+    .op-method {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-right: 6px;
+      font-family: var(--font-mono);
+    }
+    .m-get    { background: rgba(0,210,160,0.15);   color: var(--green); }
+    .m-put    { background: rgba(108,92,231,0.2);   color: var(--accent-bright); }
+    .m-patch  { background: rgba(255,192,72,0.15);  color: var(--yellow); }
+    .m-delete { background: var(--red-dim);          color: var(--red); }
+    .m-post   { background: rgba(0,210,160,0.15);   color: var(--green); }
+    .pg-params { margin-bottom: 8px; }
+    .pg-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 720px) { .pg-layout { grid-template-columns: 1fr; } }
+    .pg-panel-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .pg-code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      overflow-x: auto;
+    }
+    .pg-code pre {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.65;
+      white-space: pre;
+      color: var(--text-dim);
+    }
+    .pg-run-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .pg-response {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      min-height: 80px;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+    .pg-response pre {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text-dim);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .status-ok  { background: var(--green-dim); color: var(--green); }
+    .status-err { background: var(--red-dim);   color: var(--red); }
+    .pg-response-empty { color: var(--text-faint); font-size: 0.85rem; }
+
     /* ── Footer ──────────────────────────────────────────── */
     footer {
       border-top: 1px solid var(--border);
@@ -484,6 +708,61 @@
       background: var(--surface-2);
       padding: 1px 5px;
       border-radius: 3px;
+    }
+
+    /* ── FS Browser ──────────────────────────────────────── */
+    .fs-browser { margin-top: 32px; }
+    .fs-browser h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 16px; }
+    .fs-breadcrumb {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 2px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .fs-bc-part {
+      color: var(--accent-bright);
+      cursor: pointer;
+      padding: 1px 5px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .fs-bc-part:hover { background: var(--surface-3); }
+    .fs-bc-sep { color: var(--text-faint); padding: 0 2px; }
+    .fs-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.12s;
+    }
+    .fs-entry:last-child { border-bottom: none; }
+    .fs-entry:hover { background: var(--surface-2); }
+    .fs-entry-name { flex: 1; font-family: var(--font-mono); color: var(--text); }
+    .fs-entry-dir  { color: var(--accent-bright); }
+    .fs-entry-meta { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-faint); }
+    .fs-file-view {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.65;
+      color: var(--text-dim);
+      max-height: 340px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
     /* ── Animations ──────────────────────────────────────── */
@@ -530,7 +809,7 @@
     </section>
 
     <section class="code-section" id="api-examples">
-      <h2 class="anim">Two storage methods. Zero headaches.</h2>
+      <h2 class="anim">Two storage methods. One framework.</h2>
       <p class="subtitle anim anim-d1">A flat key-value store for simple data, plus a full hierarchical file system for structured projects.</p>
       <div class="code-grid anim anim-d2">
         <div class="code-card">
@@ -629,21 +908,14 @@ curl -X PUT https://data2l.ink/api/fs/default/notes/todo.md \
             <span class="endpoint">/api/fs/:workspace/*path — read a file or dir</span>
           </div>
           <pre><span class="comment">// Read a file — returns raw text</span>
-GET <span class="str">/api/fs/default/notes/todo.md</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
+})
+.then(<span class="key">r</span> => r.text())
+.then(console.log)
 <span class="comment">// → "# My Notes\n- Item 1"</span>
 
-<span class="comment">// Read lines 10–20 only</span>
-GET <span class="str">/api/fs/default/notes/todo.md?start=10&amp;end=20</span>
-
-<span class="comment">// List a directory — returns JSON</span>
-GET <span class="str">/api/fs/default/notes</span>
-<span class="comment">// → { type: "directory", entries: [
-//     { name: "todo.md",  type: "file",      size: 20 },
-//     { name: "archive",  type: "directory",  fileCount: 3 }
-//   ] }</span>
-
-<span class="comment">// List workspace root</span>
-GET <span class="str">/api/fs/default</span></pre>
+<span class="comment">// Optional: read lines 10–20 only  →  ?start=10&amp;end=20</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
@@ -667,23 +939,52 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>
         <div class="code-card">
           <div class="code-card-header">
             <span class="method method-delete">DELETE</span>
-            <span class="endpoint">/api/fs/:workspace/*path — move, copy, delete</span>
+            <span class="endpoint">/api/fs/:workspace/*path — delete</span>
           </div>
           <pre><span class="comment">// Delete a file or directory</span>
-DELETE <span class="str">/api/fs/default/notes/todo.md</span>
-
-<span class="comment">// Move a file (POST + op)</span>
-POST <span class="str">/api/fs/default/notes/todo.md</span>
-{ <span class="key">op</span>: <span class="str">'move'</span>, <span class="key">destination</span>: <span class="str">'/archive/todo.md'</span> }
-
-<span class="comment">// Copy a file</span>
-POST <span class="str">/api/fs/default/template.md</span>
-{ <span class="key">op</span>: <span class="str">'copy'</span>, <span class="key">destination</span>: <span class="str">'/notes/new.md'</span> }
-
-<span class="comment">// Manage workspaces</span>
-POST   <span class="str">/api/fs/workspaces</span>          { <span class="key">name</span>: <span class="str">'my-project'</span> }
-GET    <span class="str">/api/fs/workspaces</span>
-DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
+  <span class="key">method</span>: <span class="str">'DELETE'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
+})
+<span class="comment">// → { success: true, result: "Deleted: default:/notes/todo.md" }</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-list">POST</span>
+            <span class="endpoint">/api/fs/:workspace/*path — move</span>
+          </div>
+          <pre><span class="comment">// Move a file or directory</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
+    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+  },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">op</span>: <span class="str">'move'</span>,
+    <span class="key">destination</span>: <span class="str">'/archive/todo.md'</span>
+  })
+})
+<span class="comment">// → { success: true, result: "Moved: default:/notes/todo.md → /archive/todo.md" }</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-list">POST</span>
+            <span class="endpoint">/api/fs/:workspace/*path — copy</span>
+          </div>
+          <pre><span class="comment">// Copy a file or directory</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
+    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+  },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">op</span>: <span class="str">'copy'</span>,
+    <span class="key">destination</span>: <span class="str">'/notes/new.md'</span>
+  })
+})
+<span class="comment">// → { success: true, result: "Created: default:/notes/new.md" }</span></pre>
         </div>
       </div>
     </section>
@@ -761,6 +1062,12 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
   <!-- ═══════════════ DASHBOARD ═══════════════ -->
   <div id="dashPage" class="hidden">
     <section class="dashboard">
+      <div class="dash-tabs">
+        <button class="dash-tab active" id="tabKeys" onclick="switchDashTab('keys')">API Keys</button>
+        <button class="dash-tab" id="tabPlayground" onclick="switchDashTab('playground')">Playground</button>
+      </div>
+
+      <div id="dashKeys">
       <div class="dash-header">
         <h2>Your API Keys</h2>
       </div>
@@ -768,7 +1075,8 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
       <div id="newKeyReveal" class="new-key-reveal hidden">
         <div class="label">✦ New API key created</div>
         <div class="key-text" id="newKeyText"></div>
-        <div class="warning">Copy this key now — you can always see it in your dashboard, but it's best to save it somewhere safe.</div>
+        <div class="warning">Copy this key now — it will never be shown again.</div>
+        <button class="btn btn-green btn-sm" style="margin-top:12px" onclick="copyNewKey(this)">Copy key</button>
       </div>
 
       <div class="create-key-form">
@@ -776,7 +1084,28 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
           <label>Key label</label>
           <input type="text" id="newKeyLabel" placeholder="e.g. My project, Production, Testing...">
         </div>
-        <button class="btn btn-primary" onclick="createKey()">Generate key</button>
+        <div class="create-key-perms">
+          <div class="perms-toggles">
+            <label class="perms-toggle-label">
+              <input type="checkbox" id="new-key-kv" checked>
+              KV store
+            </label>
+            <label class="perms-toggle-label">
+              <input type="checkbox" id="new-key-fs" checked onchange="toggleNewKeyWsList()">
+              File system (JJFS)
+            </label>
+          </div>
+          <div id="new-key-wsblock">
+            <div class="perms-ws-header">
+              <span>Workspace restrictions <span class="perms-ws-hint">(empty = all workspaces)</span></span>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addWsRow()">+ Add workspace</button>
+            </div>
+            <div class="perms-ws-list" id="new-key-wslist"></div>
+          </div>
+        </div>
+        <div class="generate-row">
+          <button class="btn btn-primary" onclick="createKey()">Generate key</button>
+        </div>
       </div>
 
       <div class="key-list" id="keyList">
@@ -788,21 +1117,74 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
 
       <div class="data-browser">
         <h3>Data Browser</h3>
-        <div class="data-browser-select">
-          <div class="form-group">
-            <label>Select API key to browse</label>
-            <select id="browseKeySelect" onchange="browseData()">
-              <option value="">Choose a key...</option>
-            </select>
-          </div>
-        </div>
         <div id="dataTableContainer">
           <div class="empty-state">
             <div class="icon">📦</div>
-            <p>Select an API key to browse its stored data.</p>
+            <p>No API keys yet — create one to start storing data.</p>
           </div>
         </div>
       </div>
+
+      <div class="fs-browser">
+        <h3>File System Browser</h3>
+        <div class="data-browser-select">
+          <div class="form-group">
+            <label>Workspace</label>
+            <select id="fsWsSelect" onchange="fsWsChanged()">
+              <option value="">No workspaces yet…</option>
+            </select>
+          </div>
+        </div>
+        <div id="fsPathBar"></div>
+        <div id="fsEntries">
+          <div class="empty-state">
+            <div class="icon">🗂️</div>
+            <p>No file system data yet.</p>
+          </div>
+        </div>
+      </div>
+      </div><!-- /dashKeys -->
+
+      <div id="dashPlayground" class="hidden">
+        <div class="pg-key-row">
+          <div class="form-group" style="max-width:440px">
+            <label>API key</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="password" id="pgKeyInput" placeholder="Paste your API key here…"
+                     oninput="updateCode()"
+                     style="font-family:var(--font-mono);font-size:0.82rem;flex:1">
+              <button class="btn btn-ghost btn-sm" type="button"
+                      onclick="togglePgKeyVisibility(this)">Show</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="pg-section-label">Key-Value Store</div>
+        <div class="op-grid" id="opGridKv"></div>
+
+        <div class="pg-section-label">File System (JJFS)</div>
+        <div class="op-grid" id="opGridFs"></div>
+
+        <div class="pg-params" id="pgParams"></div>
+
+        <div class="pg-layout">
+          <div>
+            <div class="pg-panel-label">Generated code</div>
+            <div class="pg-code"><pre id="pgCodePre"></pre></div>
+          </div>
+          <div>
+            <div class="pg-panel-label">Response</div>
+            <div class="pg-run-row">
+              <button class="btn btn-green btn-sm" onclick="runOp()">Run</button>
+              <span id="pgStatus"></span>
+            </div>
+            <div class="pg-response" id="pgResponse">
+              <p class="pg-response-empty">Hit Run to see the response.</p>
+            </div>
+          </div>
+        </div>
+      </div><!-- /dashPlayground -->
+
     </section>
   </div>
 </div>
@@ -817,6 +1199,7 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
   let userEmail = localStorage.getItem('d2l_email') || null;
   let authMode = 'signup';
   let userKeys = [];
+  let availableWorkspaces = [];
 
   const API = ''; // relative — same origin
 
@@ -968,27 +1351,55 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
       if (!res.ok) { showAuth('login'); return; }
       const data = await res.json();
       userKeys = data.keys || [];
+      availableWorkspaces = data.availableWorkspaces || [];
       renderKeys();
-      renderBrowseSelect();
+      browseData();
+      loadFsWorkspaces();
     } catch (err) {
       console.error('Failed to load keys:', err);
     }
   }
 
   async function createKey() {
+    const btn = document.querySelector('.generate-row .btn');
     const label = document.getElementById('newKeyLabel').value || 'Untitled';
+    const kv = document.getElementById('new-key-kv')?.checked ?? true;
+    const fs = document.getElementById('new-key-fs')?.checked ?? true;
+    const selectedWs = [];
+    const paths = {};
+    document.querySelectorAll('#new-key-wslist .perms-ws-row').forEach(row => {
+      const inputs = row.querySelectorAll('input[type="text"]');
+      const wsName = inputs[0]?.value.trim();
+      const pathVal = inputs[1]?.value.trim();
+      if (wsName) {
+        selectedWs.push(wsName);
+        if (pathVal) {
+          const parts = pathVal.split(/(?<!\\),/).map(p => p.trim().replace(/\\,/g, ',')).filter(p => p && p !== '/');
+          if (parts.length === 1) paths[wsName] = parts[0];
+          else if (parts.length > 1) paths[wsName] = parts;
+        }
+      }
+    });
+    const workspaces = selectedWs.length === 0 ? '*' : selectedWs;
+    const permissions = { kv, fs, workspaces, paths };
     try {
       const res = await fetch(`${API}/keys`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ label }),
+        body: JSON.stringify({ label, permissions }),
       });
       const data = await res.json();
       if (res.ok) {
-        document.getElementById('newKeyReveal').classList.remove('hidden');
+        const reveal = document.getElementById('newKeyReveal');
+        reveal.classList.remove('hidden');
+        reveal.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         document.getElementById('newKeyText').textContent = data.key;
+        document.getElementById('pgKeyInput').value = data.key;
         document.getElementById('newKeyLabel').value = '';
+        btn.textContent = '✓ Key generated';
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = 'Generate key'; btn.disabled = false; }, 2000);
         loadKeys();
       }
     } catch (err) {
@@ -1009,6 +1420,24 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
     }
   }
 
+  function permSummary(p) {
+    if (!p) return 'Full access';
+    const parts = [];
+    if (p.kv)  parts.push('KV');
+    if (p.fs) {
+      if (p.workspaces === '*') {
+        parts.push('FS (all workspaces)');
+      } else if (Array.isArray(p.workspaces) && p.workspaces.length > 0) {
+        parts.push('FS (' + p.workspaces.join(', ') + ')');
+      } else if (Array.isArray(p.workspaces) && p.workspaces.length === 0) {
+        parts.push('FS (no workspaces)');
+      } else {
+        parts.push('FS');
+      }
+    }
+    return parts.length ? parts.join(' · ') : 'No access';
+  }
+
   function renderKeys() {
     const container = document.getElementById('keyList');
     if (userKeys.length === 0) {
@@ -1019,73 +1448,119 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
       const created = new Date(k.created).toLocaleDateString();
       const lastUsed = k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never';
       const masked = k.key.slice(0, 8) + '····' + k.key.slice(-6);
+      const perms = k.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} };
       return `
         <div class="key-card">
           <div class="key-info">
             <div class="key-label">${escHtml(k.label)}</div>
-            <div class="key-value" onclick="copyKey('${k.key}', this)">
-              ${masked}
-              <span class="copy-hint">Click to copy</span>
-            </div>
+            <div class="key-value">${masked}</div>
             <div class="key-meta">
               <span>Created ${created}</span>
               <span>Last used: ${lastUsed}</span>
               <span>${k.entryCount} KV entries</span>
               <span>${k.wsCount || 0} workspace${(k.wsCount || 0) !== 1 ? 's' : ''}</span>
               <span>${k.fsFileCount || 0} FS file${(k.fsFileCount || 0) !== 1 ? 's' : ''}</span>
+              <button class="key-perms-toggle" onclick="toggleKeyPerms(this)">Privileges &#9662;</button>
             </div>
           </div>
           <div class="key-actions">
-            <button class="btn btn-ghost btn-sm" onclick="copyKey('${k.key}')">Copy</button>
             <button class="btn btn-danger btn-sm" onclick="deleteKey('${k.key}')">Revoke</button>
           </div>
+          <div class="key-perms-detail">${renderPermsDetail(perms)}</div>
         </div>
       `;
     }).join('');
   }
 
-  function copyKey(key, el) {
-    navigator.clipboard.writeText(key).then(() => {
-      if (el) {
-        const hint = el.querySelector('.copy-hint');
-        if (hint) { hint.textContent = 'Copied!'; setTimeout(() => hint.textContent = 'Click to copy', 1500); }
+  function renderPermsDetail(p) {
+    p = p ?? { kv: true, fs: true, workspaces: '*', paths: {} };
+    const badge = (on) => on
+      ? '<span class="perms-badge on">Enabled</span>'
+      : '<span class="perms-badge off">Disabled</span>';
+    let wsSection = '';
+    if (p.fs) {
+      if (p.workspaces === '*') {
+        wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-badge on">All</span></div>';
+      } else if (Array.isArray(p.workspaces) && p.workspaces.length) {
+        const paths = p.paths || {};
+        const rows = p.workspaces.map(ws => {
+          const pv = paths[ws];
+          const pathChips = pv
+            ? (Array.isArray(pv) ? pv : [pv]).map(p => '<span class="perms-path-chip">→ ' + escHtml(p) + '</span>').join('')
+            : '';
+          return '<div class="perms-ws-row-item"><span class="perms-ws-chip">' + escHtml(ws) + '</span>' + pathChips + '</div>';
+        }).join('');
+        wsSection = '<div class="key-perms-row key-perms-ws-block"><span class="key-perms-ws-label">Workspaces:</span><div class="perms-ws-rows">' + rows + '</div></div>';
+      } else {
+        wsSection = '<div class="key-perms-row">Workspaces: <span class="perms-badge off">None</span></div>';
       }
+    }
+    return '<div class="key-perms-row">KV store: ' + badge(p.kv) + '</div>' +
+           '<div class="key-perms-row">File system: ' + badge(p.fs) + '</div>' +
+           wsSection;
+  }
+
+  function toggleKeyPerms(btn) {
+    const detail = btn.closest('.key-card').querySelector('.key-perms-detail');
+    const open = detail.classList.toggle('open');
+    btn.textContent = open ? 'Privileges \u25b4' : 'Privileges \u25be';
+  }
+
+  function addWsRow(name = '', path = '') {
+    const list = document.getElementById('new-key-wslist');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'perms-ws-row';
+    row.innerHTML =
+      '<input type="text" class="perms-ws-name-input" placeholder="workspace name" value="' + escHtml(name) + '">' +
+      '<span class="perms-path-label">paths:</span>' +
+      '<input type="text" class="perms-path-input" placeholder="/a, /b (comma-separated; escape literal commas as \,)" value="' + escHtml(path) + '">' +
+      '<button type="button" class="perms-ws-remove" onclick="this.closest(\'.perms-ws-row\').remove()" title="Remove">×</button>';
+    list.appendChild(row);
+    row.querySelector('.perms-ws-name-input').focus();
+  }
+
+  function toggleNewKeyWsList() {
+    const fsCheck = document.getElementById('new-key-fs');
+    const wsblock = document.getElementById('new-key-wsblock');
+    if (wsblock) wsblock.style.display = fsCheck && fsCheck.checked ? '' : 'none';
+  }
+
+  function copyNewKey(btn) {
+    const key = document.getElementById('newKeyText').textContent;
+    navigator.clipboard.writeText(key).then(() => {
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy key', 1500);
     });
   }
 
-  function renderBrowseSelect() {
-    const select = document.getElementById('browseKeySelect');
-    select.innerHTML = '<option value="">Choose a key...</option>' +
-      userKeys.map(k => `<option value="${k.key}">${escHtml(k.label)} (${k.key.slice(0,8)}...)</option>`).join('');
+  function togglePgKeyVisibility(btn) {
+    const input = document.getElementById('pgKeyInput');
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    btn.textContent = showing ? 'Show' : 'Hide';
   }
 
   // ── Data Browser ──────────────────────────────────────────────
   async function browseData() {
-    const apiKey = document.getElementById('browseKeySelect').value;
+    const apiKey = userKeys[0]?.key;
     const container = document.getElementById('dataTableContainer');
     if (!apiKey) {
-      container.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>Select an API key to browse its stored data.</p></div>';
+      container.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>No API keys yet — create one to start storing data.</p></div>';
       return;
     }
     try {
-      const res = await fetch(`${API}/api/data`, {
-        headers: { 'X-API-Key': apiKey },
-      });
+      const res = await fetch(`${API}/api/data`, { headers: { 'X-API-Key': apiKey } });
       const listing = await res.json();
       if (!listing.keys || listing.keys.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No data stored under this key yet.</p></div>';
+        container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No KV data stored yet.</p></div>';
         return;
       }
-
-      // Fetch all values
       const entries = await Promise.all(listing.keys.map(async key => {
-        const r = await fetch(`${API}/api/data/${encodeURIComponent(key)}`, {
-          headers: { 'X-API-Key': apiKey },
-        });
+        const r = await fetch(`${API}/api/data/${encodeURIComponent(key)}`, { headers: { 'X-API-Key': apiKey } });
         const d = await r.json();
         return { key, value: d.value };
       }));
-
       container.innerHTML = `
         <table class="data-table">
           <thead><tr><th>Key</th><th>Value</th></tr></thead>
@@ -1099,9 +1574,119 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
           </tbody>
         </table>
       `;
-    } catch (err) {
+    } catch {
       container.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data.</p></div>';
     }
+  }
+
+  // ── FS Browser ────────────────────────────────────────────────
+  let fsBrowserWs  = '';
+  let fsBrowserPath = [];   // path segments below the workspace root
+
+  function loadFsWorkspaces() {
+    fsBrowserPath = [];
+    const sel = document.getElementById('fsWsSelect');
+    const entriesEl = document.getElementById('fsEntries');
+    document.getElementById('fsPathBar').innerHTML = '';
+    if (!availableWorkspaces.length) {
+      sel.innerHTML = '<option value="">No workspaces yet…</option>';
+      entriesEl.innerHTML = '<div class="empty-state"><div class="icon">🗂️</div><p>No file system data yet.</p></div>';
+      return;
+    }
+    sel.innerHTML = availableWorkspaces.map(w =>
+      '<option value="' + escHtml(w) + '">' + escHtml(w) + '</option>'
+    ).join('');
+    fsBrowserWs = availableWorkspaces[0];
+    sel.value = fsBrowserWs;
+    fsBrowse();
+  }
+
+  function fsWsChanged() {
+    fsBrowserPath = [];
+    fsBrowse();
+  }
+
+  async function fsBrowse() {
+    const ws = document.getElementById('fsWsSelect').value;
+    if (!ws) return;
+    fsBrowserWs = ws;
+    const pathStr = fsBrowserPath.join('/');
+    const url = '/api/fs/' + encodeURIComponent(ws) + (pathStr ? '/' + pathStr : '');
+    renderFsBreadcrumb();
+    document.getElementById('fsEntries').innerHTML =
+      '<p style="color:var(--text-faint);font-size:0.85rem;padding:12px 0">Loading…</p>';
+    try {
+      const res  = await fetch(url, { credentials: 'include' });
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch {}
+      if (data && data.type === 'directory') {
+        renderFsDirectory(data.entries);
+      } else {
+        // file content — pretty-print if valid JSON
+        let display = text;
+        if (data !== null && typeof data === 'object') {
+          try { display = JSON.stringify(data, null, 2); } catch {}
+        }
+        document.getElementById('fsEntries').innerHTML =
+          '<div class="fs-file-view">' + escHtml(display) + '</div>';
+      }
+    } catch {
+      document.getElementById('fsEntries').innerHTML =
+        '<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load.</p></div>';
+    }
+  }
+
+  function renderFsBreadcrumb() {
+    const bar = document.getElementById('fsPathBar');
+    if (!fsBrowserWs) { bar.innerHTML = ''; return; }
+    const parts = [fsBrowserWs, ...fsBrowserPath];
+    bar.innerHTML = '<div class="fs-breadcrumb">' +
+      parts.map((seg, i) => {
+        const sep = i > 0 ? '<span class="fs-bc-sep">/</span>' : '';
+        return sep + '<span class="fs-bc-part" onclick="fsGoTo(' + (i - 1) + ')">' + escHtml(seg) + '</span>';
+      }).join('') +
+      '</div>';
+  }
+
+  function renderFsDirectory(entries) {
+    const el = document.getElementById('fsEntries');
+    if (!entries || entries.length === 0) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>Empty directory.</p></div>';
+      return;
+    }
+    // dirs first, then files, both alphabetical
+    const sorted = [...entries].sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    const rows = sorted.map(e => {
+      const isDir = e.type === 'directory';
+      const icon  = isDir ? '📁' : '📄';
+      const meta  = isDir
+        ? (e.fileCount + ' file' + (e.fileCount !== 1 ? 's' : ''))
+        : (e.size !== undefined ? e.size + ' B' : '');
+      const nameClass = 'fs-entry-name' + (isDir ? ' fs-entry-dir' : '');
+      const handler = 'fsNavigate(' + JSON.stringify(e.name) + ',' + JSON.stringify(e.type) + ')';
+    return '<div class="fs-entry" onclick="' + handler.replace(/"/g, '&quot;') + '">' +
+        '<span>' + icon + '</span>' +
+        '<span class="' + nameClass + '">' + escHtml(e.name) + (isDir ? '/' : '') + '</span>' +
+        '<span class="fs-entry-meta">' + escHtml(meta) + '</span>' +
+        '</div>';
+    });
+    el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">' +
+      rows.join('') + '</div>';
+  }
+
+  function fsNavigate(name, type) {
+    fsBrowserPath.push(name);
+    fsBrowse();
+  }
+
+  function fsGoTo(depth) {
+    // depth -1 = workspace root; 0 = first path segment; etc.
+    fsBrowserPath = depth < 0 ? [] : fsBrowserPath.slice(0, depth + 1);
+    fsBrowse();
   }
 
   // ── Util ──────────────────────────────────────────────────────
@@ -1109,6 +1694,352 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
     const d = document.createElement('div');
     d.textContent = String(str);
     return d.innerHTML;
+  }
+
+  // ── Playground ────────────────────────────────────────────────
+  let pgActiveOp = 'kv-put';
+  let pgInited = false;
+
+  const OPS = [
+    {
+      id: 'kv-put', group: 'kv', label: 'Store value', method: 'PUT',
+      params: [
+        { id: 'key',   label: 'Key',              ph: 'myapp' },
+        { id: 'value', label: 'Value (any JSON)',  ph: '"hello"  or  42  or  {"users":42}' },
+      ],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/data/" + (p.key || ':key') + "', {\n" +
+          "  method: 'PUT',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({\n" +
+          "    value: " + (p.value || '...') + "\n" +
+          "  })\n" +
+          "})";
+      },
+      req(p, k) {
+        return { url: '/api/data/' + encodeURIComponent(p.key), method: 'PUT',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: safeParse(p.value) }) };
+      }
+    },
+    {
+      id: 'kv-get', group: 'kv', label: 'Get value', method: 'GET',
+      params: [{ id: 'key', label: 'Key', ph: 'myapp' }],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/data/" + (p.key || ':key') + "', {\n" +
+          "  headers: { 'X-API-Key': '" + k + "' }\n" +
+          "})\n" +
+          ".then(r => r.json())\n" +
+          ".then(data => console.log(data.value))";
+      },
+      req(p, k) {
+        return { url: '/api/data/' + encodeURIComponent(p.key), method: 'GET',
+          headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'kv-list', group: 'kv', label: 'List keys', method: 'GET',
+      params: [],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/data', {\n" +
+          "  headers: { 'X-API-Key': '" + k + "' }\n" +
+          "})\n" +
+          ".then(r => r.json())\n" +
+          ".then(data => console.log(data.keys))";
+      },
+      req(p, k) {
+        return { url: '/api/data', method: 'GET', headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'kv-delete', group: 'kv', label: 'Delete key', method: 'DELETE',
+      params: [{ id: 'key', label: 'Key', ph: 'myapp' }],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/data/" + (p.key || ':key') + "', {\n" +
+          "  method: 'DELETE',\n" +
+          "  headers: { 'X-API-Key': '" + k + "' }\n" +
+          "})";
+      },
+      req(p, k) {
+        return { url: '/api/data/' + encodeURIComponent(p.key), method: 'DELETE',
+          headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'fs-write', group: 'fs', label: 'Write file', method: 'PUT',
+      params: [
+        { id: 'workspace', label: 'Workspace',  ph: 'default' },
+        { id: 'path',      label: 'Path',        ph: 'notes/todo.md' },
+        { id: 'content',   label: 'Content',     ph: '# My Notes\n- Item 1', ta: true },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'PUT',\n" +
+          "  headers: { 'X-API-Key': '" + k + "' },\n" +
+          "  body: " + JSON.stringify(p.content || '') + "\n" +
+          "})";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || 'file.txt').replace(/^\//, '');
+        return { url: '/api/fs/' + ws + '/' + path, method: 'PUT',
+          headers: { 'X-API-Key': k }, body: p.content || '' };
+      }
+    },
+    {
+      id: 'fs-read', group: 'fs', label: 'Read / List', method: 'GET',
+      params: [
+        { id: 'workspace', label: 'Workspace',              ph: 'default' },
+        { id: 'path',      label: 'Path (file or dir)',     ph: 'notes/todo.md' },
+        { id: 'start',     label: 'Start line (optional)',  ph: '' },
+        { id: 'end',       label: 'End line (optional)',    ph: '' },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || '';
+        const qs = (p.start && p.end) ? '?start=' + p.start + '&end=' + p.end
+                 : p.start ? '?start=' + p.start : '';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + qs + "', {\n" +
+          "  headers: { 'X-API-Key': '" + k + "' }\n" +
+          "})\n" +
+          ".then(r => r.text())\n" +
+          ".then(console.log)";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || '').replace(/^\//, '');
+        const qs = (p.start && p.end) ? '?start=' + p.start + '&end=' + p.end
+                 : p.start ? '?start=' + p.start : '';
+        return { url: '/api/fs/' + ws + '/' + path + qs, method: 'GET',
+          headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'fs-edit', group: 'fs', label: 'Surgical edit', method: 'PATCH',
+      params: [
+        { id: 'workspace', label: 'Workspace',               ph: 'default' },
+        { id: 'path',      label: 'Path',                    ph: 'notes/todo.md' },
+        { id: 'search',    label: 'Search (must be unique)', ph: '- Item 1', ta: true },
+        { id: 'replace',   label: 'Replace with',            ph: '- Item 1\n- Item 2', ta: true },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'PATCH',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({\n" +
+          "    search: " + JSON.stringify(p.search || '') + ",\n" +
+          "    replace: " + JSON.stringify(p.replace || '') + "\n" +
+          "  })\n" +
+          "})";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || 'file.txt').replace(/^\//, '');
+        return { url: '/api/fs/' + ws + '/' + path, method: 'PATCH',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ search: p.search || '', replace: p.replace || '' }) };
+      }
+    },
+    {
+      id: 'fs-delete', group: 'fs', label: 'Delete', method: 'DELETE',
+      params: [
+        { id: 'workspace', label: 'Workspace', ph: 'default' },
+        { id: 'path',      label: 'Path',      ph: 'notes/todo.md' },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'DELETE',\n" +
+          "  headers: { 'X-API-Key': '" + k + "' }\n" +
+          "})";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || '').replace(/^\//, '');
+        return { url: '/api/fs/' + ws + '/' + path, method: 'DELETE',
+          headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'fs-move', group: 'fs', label: 'Move', method: 'POST',
+      params: [
+        { id: 'workspace',   label: 'Workspace',        ph: 'default' },
+        { id: 'path',        label: 'Source path',      ph: 'notes/todo.md' },
+        { id: 'destination', label: 'Destination path', ph: 'archive/todo.md' },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'POST',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({\n" +
+          "    op: 'move',\n" +
+          "    destination: " + JSON.stringify(p.destination || '') + "\n" +
+          "  })\n" +
+          "})";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || '').replace(/^\//, '');
+        return { url: '/api/fs/' + ws + '/' + path, method: 'POST',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ op: 'move', destination: p.destination || '' }) };
+      }
+    },
+    {
+      id: 'fs-copy', group: 'fs', label: 'Copy', method: 'POST',
+      params: [
+        { id: 'workspace',   label: 'Workspace',        ph: 'default' },
+        { id: 'path',        label: 'Source path',      ph: 'template.md' },
+        { id: 'destination', label: 'Destination path', ph: 'notes/new.md' },
+      ],
+      code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'POST',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({\n" +
+          "    op: 'copy',\n" +
+          "    destination: " + JSON.stringify(p.destination || '') + "\n" +
+          "  })\n" +
+          "})";
+      },
+      req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || '').replace(/^\//, '');
+        return { url: '/api/fs/' + ws + '/' + path, method: 'POST',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ op: 'copy', destination: p.destination || '' }) };
+      }
+    },
+  ];
+
+  function safeParse(str) {
+    try { return JSON.parse(str); } catch { return str; }
+  }
+
+  function pgApiKey() {
+    return document.getElementById('pgKeyInput').value;
+  }
+
+  function switchDashTab(tab) {
+    document.getElementById('dashKeys').classList.toggle('hidden', tab !== 'keys');
+    document.getElementById('dashPlayground').classList.toggle('hidden', tab !== 'playground');
+    document.getElementById('tabKeys').classList.toggle('active', tab === 'keys');
+    document.getElementById('tabPlayground').classList.toggle('active', tab === 'playground');
+    if (tab === 'playground' && !pgInited) initPlayground();
+  }
+
+  function initPlayground() {
+    pgInited = true;
+    renderOpGrids();
+    selectOp('kv-put');
+  }
+
+  function renderOpGrids() {
+    const mc = { GET: 'm-get', PUT: 'm-put', PATCH: 'm-patch', DELETE: 'm-delete', POST: 'm-post' };
+    const card = op =>
+      '<button class="op-card" id="op-' + op.id + '" onclick="selectOp(\'' + op.id + '\')">' +
+      '<span class="op-method ' + (mc[op.method] || '') + '">' + op.method + '</span>' +
+      escHtml(op.label) + '</button>';
+    document.getElementById('opGridKv').innerHTML = OPS.filter(o => o.group === 'kv').map(card).join('');
+    document.getElementById('opGridFs').innerHTML = OPS.filter(o => o.group === 'fs').map(card).join('');
+  }
+
+  function selectOp(opId) {
+    pgActiveOp = opId;
+    OPS.forEach(o => {
+      const el = document.getElementById('op-' + o.id);
+      if (el) el.classList.toggle('active', o.id === opId);
+    });
+    buildParamForm(OPS.find(o => o.id === opId));
+    updateCode();
+  }
+
+  function buildParamForm(op) {
+    const container = document.getElementById('pgParams');
+    if (!op || !op.params.length) {
+      container.innerHTML = '<p style="color:var(--text-faint);font-size:0.88rem;margin-bottom:16px">No parameters needed.</p>';
+      return;
+    }
+    const inlineParams = op.params.filter(p => !p.ta);
+    const taParams     = op.params.filter(p =>  p.ta);
+    let html = '';
+    if (inlineParams.length) {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px">' +
+        inlineParams.map(param =>
+          '<div class="form-group" style="flex:1;min-width:180px"><label>' + escHtml(param.label) + '</label>' +
+          '<input type="text" id="pg_' + param.id + '" placeholder="' + escHtml(param.ph || '') + '" oninput="updateCode()"></div>'
+        ).join('') + '</div>';
+    }
+    if (taParams.length) {
+      html += '<div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">' +
+        taParams.map(param =>
+          '<div class="form-group" style="margin-bottom:0"><label>' + escHtml(param.label) + '</label>' +
+          '<textarea id="pg_' + param.id + '" placeholder="' + escHtml(param.ph || '') + '" rows="3" oninput="updateCode()" style="font-family:var(--font-mono);resize:vertical;width:100%"></textarea></div>'
+        ).join('') + '</div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function getParams(op) {
+    const p = {};
+    (op.params || []).forEach(param => {
+      const el = document.getElementById('pg_' + param.id);
+      p[param.id] = el ? el.value : '';
+    });
+    return p;
+  }
+
+  function updateCode() {
+    const op = OPS.find(o => o.id === pgActiveOp);
+    if (!op) return;
+    const apiKey = pgApiKey() || 'd2l_your_key';
+    const pre = document.getElementById('pgCodePre');
+    if (pre) pre.textContent = op.code(getParams(op), apiKey);
+  }
+
+  async function runOp() {
+    const op = OPS.find(o => o.id === pgActiveOp);
+    if (!op) return;
+    const apiKey = pgApiKey();
+    const statusEl = document.getElementById('pgStatus');
+    const responseEl = document.getElementById('pgResponse');
+    if (!apiKey) {
+      statusEl.innerHTML = '<span class="status-badge status-err">No API key entered</span>';
+      return;
+    }
+    const { url, method, headers, body } = op.req(getParams(op), apiKey);
+    statusEl.innerHTML = '<span style="color:var(--text-faint);font-size:0.82rem">Running\u2026</span>';
+    responseEl.innerHTML = '';
+    try {
+      const opts = { method, headers };
+      if (body !== undefined) opts.body = body;
+      const res = await fetch(url, opts);
+      const text = await res.text();
+      const ok = res.status >= 200 && res.status < 300;
+      statusEl.innerHTML = '<span class="status-badge ' + (ok ? 'status-ok' : 'status-err') + '">' +
+        res.status + ' ' + escHtml(res.statusText) + '</span>';
+      let pretty = text;
+      try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+      responseEl.innerHTML = '<pre>' + escHtml(pretty) + '</pre>';
+    } catch (err) {
+      statusEl.innerHTML = '<span class="status-badge status-err">Network error</span>';
+      responseEl.innerHTML = '<pre>' + escHtml(String(err)) + '</pre>';
+    }
   }
 </script>
 

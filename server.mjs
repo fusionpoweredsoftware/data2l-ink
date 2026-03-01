@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { jjfsNavigate, parseTarget, countFiles, jjfsRead, jjfsWrite, jjfsEdit, jjfsDelete, jjfsMove, jjfsCopy } from './jjfs.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -12,10 +13,10 @@ const SESSIONS_FILE   = path.join(__dirname, 'sessions.json');
 const WORKSPACES_FILE = path.join(__dirname, 'workspaces.json');
 
 // ── In-memory stores ────────────────────────────────────────────────
-let dataStore  = {};   // { apiKey: { key: value, ... } }
+let dataStore  = {};   // { email: { key: value, ... } }
 let accounts   = {};   // { email: { passwordHash, salt, apiKeys: [{ key, label, created, lastUsed }] } }
 let sessions   = {};   // { sessionToken: { email, created, expires } }
-let workspaces = {};   // { apiKey: { wsName: { path: content | dir } } }
+let workspaces = {};   // { email: { wsName: { path: content | dir } } }
 
 // ── Persistence ─────────────────────────────────────────────────────
 function loadFromDisk() {
@@ -127,173 +128,12 @@ function serveStatic(res, filePath) {
   }
 }
 
-// ── JJFS Core ────────────────────────────────────────────────────────
-// Navigate a workspace tree to { parent, name } for an arbitrary POSIX path.
-// workspace: the workspace object itself (e.g. workspaces[apiKey]['default'])
-// pathStr:   POSIX path, leading slash optional — e.g. "/src/app.js" or "src/app.js"
-function jjfsNavigate(workspace, pathStr) {
-  const parts = (pathStr || '').replace(/^\//, '').split('/').filter(Boolean);
-  if (parts.length === 0) return { error: 'Path refers to the workspace root' };
-  let node = workspace;
-  for (let i = 0; i < parts.length - 1; i++) {
-    const part = parts[i];
-    if (typeof node[part] !== 'object' || node[part] === null) {
-      return { error: `Not a directory: /${parts.slice(0, i + 1).join('/')}` };
-    }
-    node = node[part];
-  }
-  return { parent: node, name: parts[parts.length - 1] };
-}
-
-// Parse "wsName:/path" (or "wsName:/path:startLine:endLine" for JJFS_READ) from target.
-function parseTarget(target, forRead) {
-  const firstColon = target.indexOf(':');
-  if (firstColon === -1) return { error: 'Invalid target — expected format: wsName:/path' };
-  const wsName = target.slice(0, firstColon);
-  if (!wsName) return { error: 'Workspace name cannot be empty' };
-  const rest = target.slice(firstColon + 1) || '/';
-  if (forRead) {
-    const m = rest.match(/^(.*):(\d+):(\d+)$/);
-    if (m) return { wsName, filePath: m[1] || '/', startLine: parseInt(m[2]), endLine: parseInt(m[3]) };
-  }
-  return { wsName, filePath: rest };
-}
-
-// Count all leaf files (strings) in a workspace tree.
-function countFiles(node) {
-  if (typeof node === 'string') return 1;
-  if (typeof node !== 'object' || node === null) return 0;
-  return Object.values(node).reduce((sum, v) => sum + countFiles(v), 0);
-}
-
-function jjfsRead(wsForKey, wsName, filePath, startLine, endLine) {
-  const ws = wsForKey[wsName];
-  if (!ws) return { success: false, result: `Workspace not found: ${wsName}` };
-
-  // Root listing
-  const trimmed = (filePath || '').replace(/^\//, '');
-  if (!trimmed) {
-    const lines = Object.keys(ws).map(k => typeof ws[k] === 'object' ? k + '/' : k);
-    return { success: true, result: lines.join('\n') || '(empty workspace)' };
-  }
-
-  const nav = jjfsNavigate(ws, filePath);
-  if (nav.error) return { success: false, result: nav.error };
-  const { parent, name } = nav;
-  const node = parent[name];
-  if (node === undefined) return { success: false, result: `Not found: ${filePath}` };
-
-  if (typeof node === 'object' && node !== null) {
-    // Directory listing — append '/' to subdirs for clarity
-    const lines = Object.keys(node).map(k => typeof node[k] === 'object' ? k + '/' : k);
-    return { success: true, result: lines.join('\n') || '(empty directory)' };
-  }
-
-  let content = String(node);
-  if (startLine !== undefined && endLine !== undefined) {
-    const allLines = content.split('\n');
-    content = allLines.slice(Math.max(0, startLine - 1), Math.min(allLines.length, endLine)).join('\n');
-  }
-  return { success: true, result: content };
-}
-
-function jjfsWrite(wsForKey, wsName, filePath, content) {
-  const ws = wsForKey[wsName];
-  if (!ws) return { success: false, result: `Workspace not found: ${wsName}` };
-  if (!filePath || filePath === '/') return { success: false, result: 'Cannot write to workspace root' };
-
-  const parts = filePath.replace(/^\//, '').split('/').filter(Boolean);
-  if (parts.length === 0) return { success: false, result: 'Invalid path' };
-
-  // Walk path, creating intermediate directories as needed.
-  let node = ws;
-  for (let i = 0; i < parts.length - 1; i++) {
-    const part = parts[i];
-    if (node[part] === undefined) {
-      node[part] = {};
-    } else if (typeof node[part] !== 'object' || node[part] === null) {
-      return { success: false, result: `Path conflict: /${parts.slice(0, i + 1).join('/')} is a file, not a directory` };
-    }
-    node = node[part];
-  }
-
-  const name = parts[parts.length - 1];
-  if (typeof node[name] === 'object' && typeof content !== 'object') {
-    return { success: false, result: `Path conflict: ${filePath} is a directory` };
-  }
-  const existed = name in node;
-  node[name] = content;
-  return { success: true, result: `${existed ? 'Overwrote' : 'Created'}: ${wsName}:${filePath}` };
-}
-
-function jjfsDelete(wsForKey, wsName, filePath) {
-  const ws = wsForKey[wsName];
-  if (!ws) return { success: false, result: `Workspace not found: ${wsName}` };
-  if (!filePath || filePath === '/') return { success: false, result: 'Cannot delete workspace root — use DELETE /api/fs/workspaces/:name' };
-
-  const nav = jjfsNavigate(ws, filePath);
-  if (nav.error) return { success: false, result: nav.error };
-  const { parent, name } = nav;
-  if (!(name in parent)) return { success: false, result: `Not found: ${filePath}` };
-  delete parent[name];
-  return { success: true, result: `Deleted: ${wsName}:${filePath}` };
-}
-
-function jjfsMove(wsForKey, wsName, srcPath, destPath) {
-  const ws = wsForKey[wsName];
-  if (!ws) return { success: false, result: `Workspace not found: ${wsName}` };
-
-  const srcNav = jjfsNavigate(ws, srcPath);
-  if (srcNav.error) return { success: false, result: srcNav.error };
-  const { parent: srcParent, name: srcName } = srcNav;
-  if (!(srcName in srcParent)) return { success: false, result: `Not found: ${srcPath}` };
-
-  const payload = JSON.parse(JSON.stringify(srcParent[srcName]));
-  const writeResult = jjfsWrite(wsForKey, wsName, destPath, payload);
-  if (!writeResult.success) return writeResult;
-
-  delete srcParent[srcName];
-  return { success: true, result: `Moved: ${wsName}:${srcPath} → ${destPath}` };
-}
-
-function jjfsCopy(wsForKey, wsName, srcPath, destPath) {
-  const ws = wsForKey[wsName];
-  if (!ws) return { success: false, result: `Workspace not found: ${wsName}` };
-
-  const srcNav = jjfsNavigate(ws, srcPath);
-  if (srcNav.error) return { success: false, result: srcNav.error };
-  const { parent: srcParent, name: srcName } = srcNav;
-  if (!(srcName in srcParent)) return { success: false, result: `Not found: ${srcPath}` };
-
-  const payload = JSON.parse(JSON.stringify(srcParent[srcName]));
-  return jjfsWrite(wsForKey, wsName, destPath, payload);
-}
-
-// Surgical search-and-replace within a file. search must appear exactly once.
-function jjfsEdit(wsForKey, wsName, filePath, searchStr, replaceStr) {
-  const ws = wsForKey[wsName];
-  if (!ws) return { success: false, result: `Workspace not found: ${wsName}` };
-
-  const nav = jjfsNavigate(ws, filePath);
-  if (nav.error) return { success: false, result: nav.error };
-  const { parent, name } = nav;
-  if (!(name in parent)) return { success: false, result: `Not found: ${filePath}` };
-  if (typeof parent[name] !== 'string') return { success: false, result: `Not a file: ${filePath}` };
-
-  const occurrences = parent[name].split(searchStr).length - 1;
-  if (occurrences === 0) return { success: false, result: `Search text not found in: ${filePath}` };
-  if (occurrences > 1) return { success: false, result: `Search text is not unique (${occurrences} matches) in: ${filePath}` };
-
-  parent[name] = parent[name].replace(searchStr, replaceStr);
-  return { success: true, result: `Edited: ${wsName}:${filePath}` };
-}
-
-// Ensure a default workspace exists for an API key.
-function provisionWorkspace(apiKey) {
-  if (!workspaces[apiKey]) {
-    workspaces[apiKey] = { default: {} };
-    saveWorkspaces();
-  }
+// Ensure a default workspace and KV store exist for an account.
+function provisionAccount(email) {
+  let dirty = false;
+  if (!workspaces[email]) { workspaces[email] = { default: {} }; dirty = true; }
+  if (!dataStore[email])  { dataStore[email]  = {};               dirty = true; }
+  if (dirty) { saveWorkspaces(); saveData(); }
 }
 
 // ── Session GC ───────────────────────────────────────────────────────
@@ -388,15 +228,19 @@ async function handleRequest(req, res) {
     const session = getSessionFromReq(req);
     if (!session) return json(res, 401, { error: 'Not authenticated' });
     try {
-      const { label } = JSON.parse(await readBody(req));
+      const body = JSON.parse(await readBody(req));
+      const { label, permissions: reqPerms } = body;
       const apiKey = generateKey();
       const account = accounts[session.email];
-      account.apiKeys.push({ key: apiKey, label: label || 'Untitled', created: Date.now(), lastUsed: null });
-      dataStore[apiKey] = {};
-      workspaces[apiKey] = { default: {} };
+      const permissions = {
+        kv: reqPerms?.kv !== false,
+        fs: reqPerms?.fs !== false,
+        workspaces: Array.isArray(reqPerms?.workspaces) ? reqPerms.workspaces : '*',
+        paths: (reqPerms?.paths && typeof reqPerms.paths === 'object') ? reqPerms.paths : {},
+      };
+      account.apiKeys.push({ key: apiKey, label: label || 'Untitled', created: Date.now(), lastUsed: null, permissions });
+      provisionAccount(session.email);
       saveAccounts();
-      saveData();
-      saveWorkspaces();
       return json(res, 201, { key: apiKey, label: label || 'Untitled' });
     } catch { return json(res, 400, { error: 'Invalid request body' }); }
   }
@@ -406,14 +250,16 @@ async function handleRequest(req, res) {
     if (!session) return json(res, 401, { error: 'Not authenticated' });
     const account = accounts[session.email];
     return json(res, 200, {
+      availableWorkspaces: Object.keys(workspaces[session.email] || {}),
       keys: (account.apiKeys || []).map(k => ({
         key: k.key,
         label: k.label,
         created: k.created,
         lastUsed: k.lastUsed,
-        entryCount: Object.keys(dataStore[k.key] || {}).length,
-        wsCount: Object.keys(workspaces[k.key] || {}).length,
-        fsFileCount: Object.values(workspaces[k.key] || {}).reduce((sum, ws) => sum + countFiles(ws), 0),
+        permissions: k.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} },
+        entryCount: Object.keys(dataStore[session.email] || {}).length,
+        wsCount: Object.keys(workspaces[session.email] || {}).length,
+        fsFileCount: Object.values(workspaces[session.email] || {}).reduce((sum, ws) => sum + countFiles(ws), 0),
       })),
     });
   }
@@ -426,11 +272,7 @@ async function handleRequest(req, res) {
     const idx = account.apiKeys.findIndex(k => k.key === keyToDelete);
     if (idx === -1) return json(res, 404, { error: 'API key not found' });
     account.apiKeys.splice(idx, 1);
-    delete dataStore[keyToDelete];
-    delete workspaces[keyToDelete];
     saveAccounts();
-    saveData();
-    saveWorkspaces();
     return json(res, 200, { success: true });
   }
 
@@ -445,8 +287,11 @@ async function handleRequest(req, res) {
     const keyObj = ownerInfo.account.apiKeys.find(k => k.key === apiKey);
     if (keyObj) { keyObj.lastUsed = Date.now(); saveAccounts(); }
 
-    if (!dataStore[apiKey]) dataStore[apiKey] = {};
-    const store = dataStore[apiKey];
+    const permsKv = keyObj?.permissions ?? { kv: true };
+    if (!permsKv.kv) return json(res, 403, { error: 'This API key does not have KV store access' });
+
+    provisionAccount(ownerInfo.email);
+    const store = dataStore[ownerInfo.email];
     const dataPath = pathname.replace('/api/data', '').replace(/^\//, '');
 
     if (!dataPath && method === 'GET')
@@ -479,19 +324,27 @@ async function handleRequest(req, res) {
     return json(res, 405, { error: 'Method not allowed' });
   }
 
-  // ── JJFS file system (API-key authenticated) ───────────────────────
+  // ── JJFS file system (API-key or session authenticated) ────────────
   if (pathname.startsWith('/api/fs')) {
     const apiKey = getApiKeyFromReq(req);
-    if (!apiKey) return json(res, 401, { error: 'X-API-Key header required' });
+    let wsForKey, perms;
 
-    const ownerInfo = findAccountByApiKey(apiKey);
-    if (!ownerInfo) return json(res, 403, { error: 'Invalid API key' });
-
-    const keyObj = ownerInfo.account.apiKeys.find(k => k.key === apiKey);
-    if (keyObj) { keyObj.lastUsed = Date.now(); saveAccounts(); }
-
-    provisionWorkspace(apiKey);
-    const wsForKey = workspaces[apiKey];
+    if (apiKey) {
+      const ownerInfo = findAccountByApiKey(apiKey);
+      if (!ownerInfo) return json(res, 403, { error: 'Invalid API key' });
+      const keyObj = ownerInfo.account.apiKeys.find(k => k.key === apiKey);
+      if (keyObj) { keyObj.lastUsed = Date.now(); saveAccounts(); }
+      perms = keyObj?.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} };
+      if (!perms.fs) return json(res, 403, { error: 'This API key does not have filesystem access' });
+      provisionAccount(ownerInfo.email);
+      wsForKey = workspaces[ownerInfo.email];
+    } else {
+      const session = getSessionFromReq(req);
+      if (!session) return json(res, 401, { error: 'X-API-Key header required' });
+      provisionAccount(session.email);
+      wsForKey = workspaces[session.email];
+      perms = { kv: true, fs: true, workspaces: '*', paths: {} };
+    }
 
     // POST /api/fs/execute — perform a JJFS operation
     if (pathname === '/api/fs/execute' && method === 'POST') {
@@ -515,6 +368,7 @@ async function handleRequest(req, res) {
         case 'JJFS_WRITE':
           if (content === undefined || content === null)
             return json(res, 400, { error: 'content is required for JJFS_WRITE' });
+          if (!wsForKey[wsName]) wsForKey[wsName] = {};
           result = jjfsWrite(wsForKey, wsName, filePath, content);
           if (result.success) saveWorkspaces();
           break;
@@ -532,7 +386,11 @@ async function handleRequest(req, res) {
 
         case 'JJFS_DELETE':
           result = jjfsDelete(wsForKey, wsName, filePath);
-          if (result.success) saveWorkspaces();
+          if (result.success) {
+            if (wsName !== 'default' && Object.keys(wsForKey[wsName] || {}).length === 0)
+              delete wsForKey[wsName];
+            saveWorkspaces();
+          }
           break;
 
         case 'JJFS_MOVE':
@@ -556,10 +414,9 @@ async function handleRequest(req, res) {
 
     // GET /api/fs/workspaces — list workspaces for this API key
     if (pathname === '/api/fs/workspaces' && method === 'GET') {
-      const wsList = Object.entries(wsForKey).map(([name, tree]) => ({
-        name,
-        fileCount: countFiles(tree),
-      }));
+      const wsList = Object.entries(wsForKey)
+        .filter(([name]) => perms.workspaces === '*' || perms.workspaces.includes(name))
+        .map(([name, tree]) => ({ name, fileCount: countFiles(tree) }));
       return json(res, 200, { workspaces: wsList, count: wsList.length });
     }
 
@@ -631,6 +488,17 @@ async function handleRequest(req, res) {
       const filePath  = slashIdx === -1 ? '/' : fsSubpath.slice(slashIdx);
       if (!wsName) return json(res, 404, { error: 'Not found' });
 
+      if (perms.workspaces !== '*' && !perms.workspaces.includes(wsName))
+        return json(res, 403, { error: `This API key does not have access to workspace: ${wsName}` });
+      const pathRestriction = (perms.paths || {})[wsName];
+      if (pathRestriction) {
+        const allowed = (Array.isArray(pathRestriction) ? pathRestriction : [pathRestriction])
+          .map(p => p.replace(/\/$/, ''))
+          .filter(p => p && p !== '');
+        if (allowed.length > 0 && !allowed.some(a => filePath === a || filePath.startsWith(a + '/')))
+          return json(res, 403, { error: `This API key is restricted to specific paths in workspace: ${wsName}` });
+      }
+
       if (method === 'GET') {
         if (!wsForKey[wsName]) return json(res, 404, { error: `Workspace not found: ${wsName}` });
         const ws = wsForKey[wsName];
@@ -663,6 +531,7 @@ async function handleRequest(req, res) {
       }
 
       if (method === 'PUT') {
+        if (!wsForKey[wsName]) wsForKey[wsName] = {};
         const content = await readBody(req);
         const r = jjfsWrite(wsForKey, wsName, filePath, content);
         if (r.success) saveWorkspaces();
@@ -671,7 +540,11 @@ async function handleRequest(req, res) {
 
       if (method === 'DELETE') {
         const r = jjfsDelete(wsForKey, wsName, filePath);
-        if (r.success) saveWorkspaces();
+        if (r.success) {
+          if (wsName !== 'default' && Object.keys(wsForKey[wsName] || {}).length === 0)
+            delete wsForKey[wsName];
+          saveWorkspaces();
+        }
         return json(res, r.success ? 200 : 404, r);
       }
 
@@ -719,8 +592,37 @@ async function handleRequest(req, res) {
   json(res, 404, { error: 'Not found' });
 }
 
+// ── Migrate legacy per-API-key data to per-account ────────────────────
+function migrateToAccountScoped() {
+  let dirty = false;
+  for (const [k, v] of Object.entries(dataStore)) {
+    if (!k.startsWith('d2l_')) continue;
+    const owner = findAccountByApiKey(k);
+    if (!owner) { delete dataStore[k]; dirty = true; continue; }
+    const email = owner.email;
+    if (!dataStore[email]) dataStore[email] = {};
+    Object.assign(dataStore[email], v);
+    delete dataStore[k];
+    dirty = true;
+  }
+  for (const [k, v] of Object.entries(workspaces)) {
+    if (!k.startsWith('d2l_')) continue;
+    const owner = findAccountByApiKey(k);
+    if (!owner) { delete workspaces[k]; dirty = true; continue; }
+    const email = owner.email;
+    if (!workspaces[email]) workspaces[email] = {};
+    for (const [ws, tree] of Object.entries(v)) {
+      if (!workspaces[email][ws]) workspaces[email][ws] = tree;
+    }
+    delete workspaces[k];
+    dirty = true;
+  }
+  if (dirty) { saveData(); saveWorkspaces(); }
+}
+
 // ── Start ─────────────────────────────────────────────────────────────
 loadFromDisk();
+migrateToAccountScoped();
 const server = http.createServer(handleRequest);
 server.listen(PORT, () => {
   const totalFiles = Object.values(workspaces).reduce((sum, kw) =>
