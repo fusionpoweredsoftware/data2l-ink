@@ -797,17 +797,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>
 .then(console.log)
 <span class="comment">// → "# My Notes\n- Item 1"</span>
 
-<span class="comment">// Optional: read lines 10–20 only  →  ?start=10&amp;end=20</span>
-
-<span class="comment">// List a directory — returns JSON</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
-})
-.then(<span class="key">r</span> => r.json())
-<span class="comment">// → { type: "directory", entries: [
-//     { name: "todo.md", type: "file",      size: 20 },
-//     { name: "archive", type: "directory", fileCount: 3 }
-//   ] }</span></pre>
+<span class="comment">// Optional: read lines 10–20 only  →  ?start=10&amp;end=20</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
@@ -838,20 +828,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>
   <span class="key">method</span>: <span class="str">'DELETE'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
 })
-<span class="comment">// → { success: true, result: "Deleted: default:/notes/todo.md" }</span>
-
-<span class="comment">// Manage workspaces</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/workspaces'</span>, {
-  <span class="key">method</span>: <span class="str">'POST'</span>,
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">name</span>: <span class="str">'my-project'</span> })
-})
-fetch(<span class="str">'https://data2l.ink/api/fs/workspaces'</span>, {
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
-})
-fetch(<span class="str">'https://data2l.ink/api/fs/workspaces/my-project'</span>, {
-  <span class="key">method</span>: <span class="str">'DELETE'</span>, <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
-})</pre>
+<span class="comment">// → { success: true, result: "Deleted: default:/notes/todo.md" }</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
