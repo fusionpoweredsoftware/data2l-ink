@@ -280,7 +280,7 @@
       color: var(--text-dim);
       margin-bottom: 6px;
     }
-    .form-group input, .form-group select {
+    .form-group input, .form-group select, .form-group textarea {
       width: 100%;
       padding: 11px 14px;
       background: var(--surface-2);
@@ -292,7 +292,7 @@
       outline: none;
       transition: border-color 0.2s;
     }
-    .form-group input:focus { border-color: var(--accent); }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); outline: none; }
     .form-error { color: var(--red); font-size: 0.82rem; margin-top: 6px; display: none; }
     .form-error.show { display: block; }
     .auth-toggle {
@@ -1290,7 +1290,7 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
       id: 'kv-put', group: 'kv', label: 'Store value', method: 'PUT',
       params: [
         { id: 'key',   label: 'Key',              ph: 'myapp' },
-        { id: 'value', label: 'Value (any JSON)',  ph: '{ "users": 42, "status": "live" }', ta: true },
+        { id: 'value', label: 'Value (any JSON)',  ph: '"hello"  or  42  or  {"users":42}' },
       ],
       code(p, k) {
         return "fetch('https://data2l.ink/api/data/" + (p.key || ':key') + "', {\n" +
@@ -1577,7 +1577,7 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
     container.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px">' +
       op.params.map(param => {
         const inp = param.ta
-          ? '<textarea id="pg_' + param.id + '" placeholder="' + escHtml(param.ph || '') + '" rows="3" oninput="updateCode()" style="font-family:var(--font-mono);font-size:0.8rem;resize:vertical"></textarea>'
+          ? '<textarea id="pg_' + param.id + '" placeholder="' + escHtml(param.ph || '') + '" rows="3" oninput="updateCode()" style="font-family:var(--font-mono);resize:vertical"></textarea>'
           : '<input type="text" id="pg_' + param.id + '" placeholder="' + escHtml(param.ph || '') + '" oninput="updateCode()">';
         return '<div class="form-group" style="flex:1;min-width:180px"><label>' + escHtml(param.label) + '</label>' + inp + '</div>';
       }).join('') + '</div>';
