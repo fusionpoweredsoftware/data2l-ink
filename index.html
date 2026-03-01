@@ -1217,6 +1217,7 @@ DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
       if (res.ok) {
         document.getElementById('newKeyReveal').classList.remove('hidden');
         document.getElementById('newKeyText').textContent = data.key;
+        document.getElementById('pgKeyInput').value = data.key;
         document.getElementById('newKeyLabel').value = '';
         loadKeys();
       }
