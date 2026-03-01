@@ -228,11 +228,17 @@ async function handleRequest(req, res) {
     const session = getSessionFromReq(req);
     if (!session) return json(res, 401, { error: 'Not authenticated' });
     try {
-      const { label } = JSON.parse(await readBody(req));
+      const body = JSON.parse(await readBody(req));
+      const { label, permissions: reqPerms } = body;
       const apiKey = generateKey();
       const account = accounts[session.email];
-      account.apiKeys.push({ key: apiKey, label: label || 'Untitled', created: Date.now(), lastUsed: null,
-        permissions: { kv: true, fs: true, workspaces: '*', paths: {} } });
+      const permissions = {
+        kv: reqPerms?.kv !== false,
+        fs: reqPerms?.fs !== false,
+        workspaces: Array.isArray(reqPerms?.workspaces) ? reqPerms.workspaces : '*',
+        paths: (reqPerms?.paths && typeof reqPerms.paths === 'object') ? reqPerms.paths : {},
+      };
+      account.apiKeys.push({ key: apiKey, label: label || 'Untitled', created: Date.now(), lastUsed: null, permissions });
       provisionAccount(session.email);
       saveAccounts();
       return json(res, 201, { key: apiKey, label: label || 'Untitled' });
@@ -268,26 +274,6 @@ async function handleRequest(req, res) {
     account.apiKeys.splice(idx, 1);
     saveAccounts();
     return json(res, 200, { success: true });
-  }
-
-  if (pathname.startsWith('/keys/') && method === 'PATCH') {
-    const session = getSessionFromReq(req);
-    if (!session) return json(res, 401, { error: 'Not authenticated' });
-    const targetKey = pathname.slice(6);
-    const account = accounts[session.email];
-    const keyObj = account.apiKeys.find(k => k.key === targetKey);
-    if (!keyObj) return json(res, 404, { error: 'API key not found' });
-    try {
-      const body = JSON.parse(await readBody(req));
-      keyObj.permissions = {
-        kv: body.kv !== false,
-        fs: body.fs !== false,
-        workspaces: Array.isArray(body.workspaces) ? body.workspaces : '*',
-        paths: (body.paths && typeof body.paths === 'object') ? body.paths : {},
-      };
-      saveAccounts();
-      return json(res, 200, { success: true, permissions: keyObj.permissions });
-    } catch { return json(res, 400, { error: 'Invalid JSON body' }); }
   }
 
   // ── Flat KV store (API-key authenticated) ──────────────────────────

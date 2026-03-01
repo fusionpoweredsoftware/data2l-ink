@@ -333,18 +333,15 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      overflow: hidden;
-      transition: border-color 0.2s;
-    }
-    .key-card:hover { border-color: var(--border-bright); }
-    .key-card-header {
       padding: 20px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
+      transition: border-color 0.2s;
     }
+    .key-card:hover { border-color: var(--border-bright); }
     .key-info { flex: 1; min-width: 200px; }
     .key-label {
       font-weight: 600;
@@ -369,17 +366,15 @@
       font-family: var(--font-mono);
     }
     .key-actions { display: flex; gap: 8px; }
-    .key-perms-editor {
+    .create-key-perms {
       border-top: 1px solid var(--border);
-      padding: 20px 24px;
-      background: var(--surface-2);
-      display: none;
+      padding-top: 16px;
+      margin-top: 4px;
     }
-    .key-perms-editor.open { display: block; }
     .perms-toggles {
       display: flex;
       gap: 24px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
     .perms-toggle-label {
       display: flex;
@@ -401,7 +396,7 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 200px;
+      max-height: 180px;
       overflow-y: auto;
       margin-bottom: 16px;
     }
@@ -417,7 +412,7 @@
     .perms-path-label { color: var(--text-faint); font-size: 0.78rem; margin-right: 4px; }
     .perms-path-input {
       flex: 1;
-      background: var(--surface);
+      background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: 4px;
       padding: 2px 8px;
@@ -426,15 +421,19 @@
       color: var(--text);
     }
     .perms-path-input:focus { outline: none; border-color: var(--accent-bright); }
-    .perms-save-row { display: flex; justify-content: flex-end; gap: 8px; }
 
     .create-key-form {
       display: flex;
-      gap: 10px;
+      flex-direction: column;
+      gap: 0;
       margin-bottom: 32px;
-      align-items: flex-end;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
     }
-    .create-key-form .form-group { margin-bottom: 0; flex: 1; }
+    .create-key-form .form-group { margin-bottom: 14px; }
+    .create-key-form .generate-row { display: flex; justify-content: flex-end; margin-top: 4px; }
 
     .new-key-reveal {
       background: var(--green-dim);
@@ -1030,7 +1029,29 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
           <label>Key label</label>
           <input type="text" id="newKeyLabel" placeholder="e.g. My project, Production, Testing...">
         </div>
-        <button class="btn btn-primary" onclick="createKey()">Generate key</button>
+        <div class="create-key-perms">
+          <div class="perms-toggles">
+            <label class="perms-toggle-label">
+              <input type="checkbox" id="new-key-kv" checked>
+              KV store
+            </label>
+            <label class="perms-toggle-label">
+              <input type="checkbox" id="new-key-fs" checked onchange="toggleNewKeyWsList()">
+              File system (JJFS)
+            </label>
+          </div>
+          <div id="new-key-wsblock">
+            <div class="perms-ws-header">
+              <span>Workspaces:</span>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="wsSelectAll(true)">Select all</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="wsSelectAll(false)">Unselect all</button>
+            </div>
+            <div class="perms-ws-list" id="new-key-wslist"></div>
+          </div>
+        </div>
+        <div class="generate-row">
+          <button class="btn btn-primary" onclick="createKey()">Generate key</button>
+        </div>
       </div>
 
       <div class="key-list" id="keyList">
@@ -1287,6 +1308,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       availableWorkspaces = data.availableWorkspaces || [];
       renderKeys();
       renderBrowseSelect();
+      renderCreateFormWorkspaces();
     } catch (err) {
       console.error('Failed to load keys:', err);
     }
@@ -1294,12 +1316,25 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
 
   async function createKey() {
     const label = document.getElementById('newKeyLabel').value || 'Untitled';
+    const kv = document.getElementById('new-key-kv')?.checked ?? true;
+    const fs = document.getElementById('new-key-fs')?.checked ?? true;
+    const selectedWs = [];
+    const paths = {};
+    availableWorkspaces.forEach(ws => {
+      const cb = document.getElementById('new-key-ws-' + ws);
+      if (cb && cb.checked) selectedWs.push(ws);
+      const pathInput = document.getElementById('new-key-path-' + ws);
+      const pathVal = pathInput ? pathInput.value.trim() : '';
+      if (pathVal && pathVal !== '/') paths[ws] = pathVal;
+    });
+    const workspaces = selectedWs.length === availableWorkspaces.length ? '*' : selectedWs;
+    const permissions = { kv, fs, workspaces, paths };
     try {
       const res = await fetch(`${API}/keys`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ label }),
+        body: JSON.stringify({ label, permissions }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -1356,118 +1391,50 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       const lastUsed = k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never';
       const masked = k.key.slice(0, 8) + '····' + k.key.slice(-6);
       const perms = k.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} };
-      const editorId = 'perms-' + k.key;
       return `
         <div class="key-card">
-          <div class="key-card-header">
-            <div class="key-info">
-              <div class="key-label">${escHtml(k.label)}</div>
-              <div class="key-value">${masked}</div>
-              <div class="key-meta">
-                <span>Created ${created}</span>
-                <span>Last used: ${lastUsed}</span>
-                <span>${k.entryCount} KV entries</span>
-                <span>${k.wsCount || 0} workspace${(k.wsCount || 0) !== 1 ? 's' : ''}</span>
-                <span>${k.fsFileCount || 0} FS file${(k.fsFileCount || 0) !== 1 ? 's' : ''}</span>
-                <span style="color:var(--accent-bright)">${escHtml(permSummary(perms))}</span>
-              </div>
-            </div>
-            <div class="key-actions">
-              <button class="btn btn-secondary btn-sm" onclick="togglePermsEditor(${JSON.stringify(k.key)})">Edit</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteKey(${JSON.stringify(k.key)})">Revoke</button>
+          <div class="key-info">
+            <div class="key-label">${escHtml(k.label)}</div>
+            <div class="key-value">${masked}</div>
+            <div class="key-meta">
+              <span>Created ${created}</span>
+              <span>Last used: ${lastUsed}</span>
+              <span>${k.entryCount} KV entries</span>
+              <span>${k.wsCount || 0} workspace${(k.wsCount || 0) !== 1 ? 's' : ''}</span>
+              <span>${k.fsFileCount || 0} FS file${(k.fsFileCount || 0) !== 1 ? 's' : ''}</span>
+              <span style="color:var(--accent-bright)">${escHtml(permSummary(perms))}</span>
             </div>
           </div>
-          <div class="key-perms-editor" id="${editorId}">
-            <div class="perms-toggles">
-              <label class="perms-toggle-label">
-                <input type="checkbox" id="${editorId}-kv" ${perms.kv ? 'checked' : ''}>
-                KV store
-              </label>
-              <label class="perms-toggle-label">
-                <input type="checkbox" id="${editorId}-fs" ${perms.fs ? 'checked' : ''}
-                  onchange="togglePermsWsList(${JSON.stringify(k.key)})">
-                File system (JJFS)
-              </label>
-            </div>
-            <div id="${editorId}-wsblock">
-              <div class="perms-ws-header">
-                <span>Workspaces:</span>
-                <button class="btn btn-secondary btn-sm" onclick="wsSelectAll(${JSON.stringify(k.key)}, true)">Select all</button>
-                <button class="btn btn-secondary btn-sm" onclick="wsSelectAll(${JSON.stringify(k.key)}, false)">Unselect all</button>
-              </div>
-              <div class="perms-ws-list" id="${editorId}-wslist">
-                ${availableWorkspaces.map(ws => {
-                  const checked = perms.workspaces === '*' || (Array.isArray(perms.workspaces) && perms.workspaces.includes(ws));
-                  const pathVal = (perms.paths || {})[ws] || '';
-                  return `<div class="perms-ws-row">
-                    <input type="checkbox" id="${editorId}-ws-${ws}" ${checked ? 'checked' : ''}>
-                    <span class="perms-ws-name">${escHtml(ws)}</span>
-                    <span class="perms-path-label">path:</span>
-                    <input type="text" class="perms-path-input" id="${editorId}-path-${ws}"
-                      value="${escHtml(pathVal)}" placeholder="/ (unrestricted)">
-                  </div>`;
-                }).join('')}
-              </div>
-            </div>
-            <div class="perms-save-row">
-              <button class="btn btn-secondary btn-sm" onclick="togglePermsEditor(${JSON.stringify(k.key)})">Cancel</button>
-              <button class="btn btn-primary btn-sm" onclick="savePerms(${JSON.stringify(k.key)})">Save permissions</button>
-            </div>
+          <div class="key-actions">
+            <button class="btn btn-danger btn-sm" onclick="deleteKey(${JSON.stringify(k.key)})">Revoke</button>
           </div>
         </div>
       `;
     }).join('');
-    // Apply initial visibility for FS workspace blocks
-    userKeys.forEach(k => {
-      const perms = k.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} };
-      const editorId = 'perms-' + k.key;
-      const wsblock = document.getElementById(editorId + '-wsblock');
-      if (wsblock) wsblock.style.display = perms.fs ? '' : 'none';
-    });
   }
 
-  function togglePermsEditor(key) {
-    const el = document.getElementById('perms-' + key);
-    if (el) el.classList.toggle('open');
+  function renderCreateFormWorkspaces() {
+    const list = document.getElementById('new-key-wslist');
+    if (!list) return;
+    list.innerHTML = availableWorkspaces.map(ws => `
+      <div class="perms-ws-row">
+        <input type="checkbox" id="new-key-ws-${ws}" checked>
+        <span class="perms-ws-name">${escHtml(ws)}</span>
+        <span class="perms-path-label">path:</span>
+        <input type="text" class="perms-path-input" id="new-key-path-${ws}" placeholder="/ (unrestricted)">
+      </div>
+    `).join('');
   }
 
-  function togglePermsWsList(key) {
-    const fsCheck = document.getElementById('perms-' + key + '-fs');
-    const wsblock = document.getElementById('perms-' + key + '-wsblock');
+  function toggleNewKeyWsList() {
+    const fsCheck = document.getElementById('new-key-fs');
+    const wsblock = document.getElementById('new-key-wsblock');
     if (wsblock) wsblock.style.display = fsCheck && fsCheck.checked ? '' : 'none';
   }
 
-  function wsSelectAll(key, checked) {
-    const list = document.getElementById('perms-' + key + '-wslist');
-    if (!list) return;
-    list.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = checked; });
-  }
-
-  async function savePerms(key) {
-    const editorId = 'perms-' + key;
-    const kv = document.getElementById(editorId + '-kv')?.checked ?? true;
-    const fs = document.getElementById(editorId + '-fs')?.checked ?? true;
-    const selectedWs = [];
-    const paths = {};
-    availableWorkspaces.forEach(ws => {
-      const cb = document.getElementById(editorId + '-ws-' + ws);
-      if (cb && cb.checked) selectedWs.push(ws);
-      const pathInput = document.getElementById(editorId + '-path-' + ws);
-      const pathVal = pathInput ? pathInput.value.trim() : '';
-      if (pathVal && pathVal !== '/') paths[ws] = pathVal;
-    });
-    const workspaces = selectedWs.length === availableWorkspaces.length ? '*' : selectedWs;
-    try {
-      await fetch(`${API}/keys/${key}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ kv, fs, workspaces, paths }),
-      });
-      loadKeys();
-    } catch (err) {
-      console.error('Failed to save permissions:', err);
-    }
+  function wsSelectAll(checked) {
+    document.querySelectorAll('#new-key-wslist input[type="checkbox"]')
+      .forEach(cb => { cb.checked = checked; });
   }
 
   function copyNewKey(btn) {
