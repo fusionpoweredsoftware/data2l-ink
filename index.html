@@ -1466,7 +1466,8 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         ? (e.fileCount + ' file' + (e.fileCount !== 1 ? 's' : ''))
         : (e.size !== undefined ? e.size + ' B' : '');
       const nameClass = 'fs-entry-name' + (isDir ? ' fs-entry-dir' : '');
-      return '<div class="fs-entry" onclick="fsNavigate(' + JSON.stringify(e.name) + ',' + JSON.stringify(e.type) + ')">' +
+      const handler = 'fsNavigate(' + JSON.stringify(e.name) + ',' + JSON.stringify(e.type) + ')';
+    return '<div class="fs-entry" onclick="' + handler.replace(/"/g, '&quot;') + '">' +
         '<span>' + icon + '</span>' +
         '<span class="' + nameClass + '">' + escHtml(e.name) + (isDir ? '/' : '') + '</span>' +
         '<span class="fs-entry-meta">' + escHtml(meta) + '</span>' +
