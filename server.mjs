@@ -324,22 +324,27 @@ async function handleRequest(req, res) {
     return json(res, 405, { error: 'Method not allowed' });
   }
 
-  // ── JJFS file system (API-key authenticated) ───────────────────────
+  // ── JJFS file system (API-key or session authenticated) ────────────
   if (pathname.startsWith('/api/fs')) {
     const apiKey = getApiKeyFromReq(req);
-    if (!apiKey) return json(res, 401, { error: 'X-API-Key header required' });
+    let wsForKey, perms;
 
-    const ownerInfo = findAccountByApiKey(apiKey);
-    if (!ownerInfo) return json(res, 403, { error: 'Invalid API key' });
-
-    const keyObj = ownerInfo.account.apiKeys.find(k => k.key === apiKey);
-    if (keyObj) { keyObj.lastUsed = Date.now(); saveAccounts(); }
-
-    const perms = keyObj?.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} };
-    if (!perms.fs) return json(res, 403, { error: 'This API key does not have filesystem access' });
-
-    provisionAccount(ownerInfo.email);
-    const wsForKey = workspaces[ownerInfo.email];
+    if (apiKey) {
+      const ownerInfo = findAccountByApiKey(apiKey);
+      if (!ownerInfo) return json(res, 403, { error: 'Invalid API key' });
+      const keyObj = ownerInfo.account.apiKeys.find(k => k.key === apiKey);
+      if (keyObj) { keyObj.lastUsed = Date.now(); saveAccounts(); }
+      perms = keyObj?.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} };
+      if (!perms.fs) return json(res, 403, { error: 'This API key does not have filesystem access' });
+      provisionAccount(ownerInfo.email);
+      wsForKey = workspaces[ownerInfo.email];
+    } else {
+      const session = getSessionFromReq(req);
+      if (!session) return json(res, 401, { error: 'X-API-Key header required' });
+      provisionAccount(session.email);
+      wsForKey = workspaces[session.email];
+      perms = { kv: true, fs: true, workspaces: '*', paths: {} };
+    }
 
     // POST /api/fs/execute — perform a JJFS operation
     if (pathname === '/api/fs/execute' && method === 'POST') {

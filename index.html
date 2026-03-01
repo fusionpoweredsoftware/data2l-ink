@@ -1601,9 +1601,8 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
   }
 
   async function fsBrowse() {
-    const key = userKeys[0]?.key;
-    const ws  = document.getElementById('fsWsSelect').value;
-    if (!ws || !key) return;
+    const ws = document.getElementById('fsWsSelect').value;
+    if (!ws) return;
     fsBrowserWs = ws;
     const pathStr = fsBrowserPath.join('/');
     const url = '/api/fs/' + encodeURIComponent(ws) + (pathStr ? '/' + pathStr : '');
@@ -1611,7 +1610,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     document.getElementById('fsEntries').innerHTML =
       '<p style="color:var(--text-faint);font-size:0.85rem;padding:12px 0">Loading…</p>';
     try {
-      const res  = await fetch(url, { headers: { 'X-API-Key': key } });
+      const res  = await fetch(url, { credentials: 'include' });
       const text = await res.text();
       let data = null;
       try { data = JSON.parse(text); } catch {}
