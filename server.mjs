@@ -105,7 +105,9 @@ function getSessionFromReq(req) {
 }
 
 function getApiKeyFromReq(req) {
-  return req.headers['x-api-key'] || null;
+  if (req.headers['x-api-key']) return req.headers['x-api-key'];
+  try { return new URL(req.url, 'http://x').searchParams.get('api_key') || null; }
+  catch { return null; }
 }
 
 function findAccountByApiKey(apiKey) {
@@ -287,7 +289,7 @@ async function handleRequest(req, res) {
   // ── Flat KV store (API-key authenticated) ──────────────────────────
   if (pathname.startsWith('/api/data')) {
     const apiKey = getApiKeyFromReq(req);
-    if (!apiKey) return json(res, 401, { error: 'X-API-Key header required' });
+    if (!apiKey) return json(res, 401, { error: 'API key required (X-API-Key header or ?api_key= param)' });
 
     const ownerInfo = findAccountByApiKey(apiKey);
     if (!ownerInfo) return json(res, 403, { error: 'Invalid API key' });
@@ -319,8 +321,17 @@ async function handleRequest(req, res) {
     if (dataPath && (method === 'PUT' || method === 'POST')) {
       try {
         const key = decodeURIComponent(dataPath);
-        const body = JSON.parse(await readBody(req));
-        store[key] = body.value !== undefined ? body.value : body;
+        const rawBody = await readBody(req);
+        let value;
+        if (rawBody.trim()) {
+          const body = JSON.parse(rawBody);
+          value = body.value !== undefined ? body.value : body;
+        } else {
+          const qv = url.searchParams.get('value');
+          if (qv === null) return json(res, 400, { error: 'value required (JSON body or ?value= param)' });
+          value = qv;
+        }
+        store[key] = value;
         saveData();
         return json(res, 200, { key, success: true });
       } catch { return json(res, 400, { error: 'Invalid JSON body' }); }
