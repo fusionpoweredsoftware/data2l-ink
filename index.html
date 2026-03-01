@@ -828,23 +828,53 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>
         <div class="code-card">
           <div class="code-card-header">
             <span class="method method-delete">DELETE</span>
-            <span class="endpoint">/api/fs/:workspace/*path — move, copy, delete</span>
+            <span class="endpoint">/api/fs/:workspace/*path — delete</span>
           </div>
           <pre><span class="comment">// Delete a file or directory</span>
 DELETE <span class="str">/api/fs/default/notes/todo.md</span>
 
-<span class="comment">// Move a file (POST + op)</span>
-POST <span class="str">/api/fs/default/notes/todo.md</span>
-{ <span class="key">op</span>: <span class="str">'move'</span>, <span class="key">destination</span>: <span class="str">'/archive/todo.md'</span> }
-
-<span class="comment">// Copy a file</span>
-POST <span class="str">/api/fs/default/template.md</span>
-{ <span class="key">op</span>: <span class="str">'copy'</span>, <span class="key">destination</span>: <span class="str">'/notes/new.md'</span> }
-
 <span class="comment">// Manage workspaces</span>
-POST   <span class="str">/api/fs/workspaces</span>          { <span class="key">name</span>: <span class="str">'my-project'</span> }
+POST   <span class="str">/api/fs/workspaces</span>  { <span class="key">name</span>: <span class="str">'my-project'</span> }
 GET    <span class="str">/api/fs/workspaces</span>
 DELETE <span class="str">/api/fs/workspaces/my-project</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-list">POST</span>
+            <span class="endpoint">/api/fs/:workspace/*path — move</span>
+          </div>
+          <pre><span class="comment">// Move a file or directory</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
+    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+  },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">op</span>: <span class="str">'move'</span>,
+    <span class="key">destination</span>: <span class="str">'/archive/todo.md'</span>
+  })
+})
+<span class="comment">// → { success: true, result: "Moved: default:/notes/todo.md → /archive/todo.md" }</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-list">POST</span>
+            <span class="endpoint">/api/fs/:workspace/*path — copy</span>
+          </div>
+          <pre><span class="comment">// Copy a file or directory</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
+    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+  },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">op</span>: <span class="str">'copy'</span>,
+    <span class="key">destination</span>: <span class="str">'/notes/new.md'</span>
+  })
+})
+<span class="comment">// → { success: true, result: "Created: default:/notes/new.md" }</span></pre>
         </div>
       </div>
     </section>
