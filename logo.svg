@@ -1,0 +1,49 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .chain-dim {
+        fill: none;
+        stroke: #e4e6f0;
+        stroke-width: 32;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .chain-accent {
+        fill: none;
+        stroke: #a18aff;
+        stroke-width: 32;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .txt-dim {
+        font-family: 'Verdana', sans-serif;
+        font-weight: bold;
+        font-size: 64px;
+        fill: #e4e6f0;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+      .txt-accent {
+        font-family: 'Verdana', sans-serif;
+        font-weight: bold;
+        font-size: 64px;
+        fill: #a18aff;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+    </style>
+  </defs>
+
+  <rect width="512" height="512" rx="96" fill="#08090c"/>
+
+  <g transform="rotate(-30 200 312)">
+    <ellipse class="chain-dim" cx="200" cy="312" rx="120" ry="80"/>
+  </g>
+
+  <g transform="rotate(-30 312 200)">
+    <ellipse class="chain-accent" cx="312" cy="200" rx="120" ry="80"/>
+  </g>
+
+  <text class="txt-dim" x="185" y="330">10</text>
+  <text class="txt-accent" x="330" y="195">01</text>
+</svg>
