@@ -372,11 +372,6 @@
       font-family: var(--font-mono);
     }
     .key-actions { display: flex; gap: 8px; }
-    .create-key-perms {
-      border-top: 1px solid var(--border);
-      padding-top: 16px;
-      margin-top: 4px;
-    }
     .perms-toggles {
       display: flex;
       gap: 24px;
@@ -402,8 +397,6 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 180px;
-      overflow-y: auto;
       margin-bottom: 16px;
     }
     .perms-ws-row {
@@ -429,7 +422,7 @@
     .perms-path-input:focus { outline: none; border-color: var(--accent-bright); }
     .perms-ws-hint { color: var(--text-faint); font-size: 0.78rem; font-weight: 400; }
     .perms-ws-name-input {
-      flex: 0 0 140px;
+      flex: 0 0 180px;
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: 4px;
@@ -785,7 +778,7 @@
       overflow: hidden;
     }
     .dash-left-pane {
-      flex: 0 0 340px;
+      flex: 0 0 420px;
       display: flex;
       flex-direction: column;
       gap: 24px;
@@ -1310,7 +1303,28 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
               <label>Key label</label>
               <input type="text" id="newKeyLabel" placeholder="e.g. My project, Production, Testing...">
             </div>
-            <div class="create-key-perms">
+            <div class="generate-row">
+              <button class="btn btn-primary" onclick="createKey()">Generate key</button>
+            </div>
+          </div>
+
+          <div class="key-list" id="keyList">
+            <div class="empty-state">
+              <div class="icon">🔑</div>
+              <p>No API keys yet. Create one to get started.</p>
+            </div>
+          </div>
+        </div><!-- /dash-left-pane -->
+
+        <!-- ─── Right pane: browser ────────────────────────── -->
+        <div class="dash-right-pane">
+
+          <!-- New key permissions -->
+          <div class="browser-panel" id="newKeyPermsPanel">
+            <div class="browser-panel-header">
+              <span class="browser-panel-title">Permissions</span>
+            </div>
+            <div class="browser-body-padded">
               <div class="perms-toggles">
                 <label class="perms-toggle-label">
                   <input type="checkbox" id="new-key-kv" checked>
@@ -1329,21 +1343,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
                 <div class="perms-ws-list" id="new-key-wslist"></div>
               </div>
             </div>
-            <div class="generate-row">
-              <button class="btn btn-primary" onclick="createKey()">Generate key</button>
-            </div>
           </div>
-
-          <div class="key-list" id="keyList">
-            <div class="empty-state">
-              <div class="icon">🔑</div>
-              <p>No API keys yet. Create one to get started.</p>
-            </div>
-          </div>
-        </div><!-- /dash-left-pane -->
-
-        <!-- ─── Right pane: browser ────────────────────────── -->
-        <div class="dash-right-pane">
 
           <!-- Account public ID -->
           <div class="account-id-bar" id="accountIdBar" style="display:none">
