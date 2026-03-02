@@ -786,7 +786,7 @@
       gap: 24px;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 24px 12px 24px 0;
+      padding: 24px 24px 24px 0;
       scrollbar-gutter: stable;
     }
     .dash-right-pane {
@@ -801,9 +801,9 @@
       scrollbar-gutter: stable;
     }
     @media (max-width: 900px) {
-      .dash-pane-layout { flex-direction: column; overflow-y: auto; }
-      .dash-left-pane { flex: none; width: 100%; overflow: visible; padding: 12px 0 0; }
-      .dash-right-pane { overflow: visible; padding: 12px 0 20px; }
+      .dash-pane-layout { flex-direction: column; overflow-y: auto; scrollbar-gutter: stable; }
+      .dash-left-pane { flex: none; width: 100%; overflow: visible; padding: 12px 24px 0 0; }
+      .dash-right-pane { overflow: visible; padding: 12px 24px 20px 0; }
     }
 
     /* ── Browser panel ───────────────────────────────────── */
