@@ -785,7 +785,7 @@
       gap: 16px;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 24px 24px 24px 0;
+      padding: 24px 0 24px 0;
       scrollbar-gutter: stable;
     }
     .dash-right-pane {
@@ -2122,6 +2122,45 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       req(p, k) {
         return { url: '/api/data/' + encodeURIComponent(p.key), method: 'DELETE',
           headers: { 'X-API-Key': k } };
+      }
+    },
+    {
+      id: 'kv-visibility', group: 'kv', label: 'Set visibility', method: 'PATCH',
+      params: [
+        { id: 'key',        label: 'Key',                         ph: 'myapp' },
+        { id: 'visibility', label: 'Visibility (public / private)', ph: 'public' },
+      ],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/data/" + (p.key || ':key') + "', {\n" +
+          "  method: 'PATCH',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({ visibility: '" + (p.visibility || 'public') + "' })\n" +
+          "})";
+      },
+      req(p, k) {
+        return { url: '/api/data/' + encodeURIComponent(p.key), method: 'PATCH',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ visibility: p.visibility || 'public' }) };
+      }
+    },
+    {
+      id: 'kv-public', group: 'kv', label: 'Public link', method: 'GET',
+      params: [
+        { id: 'accountId', label: 'Account ID (from dashboard)', ph: 'your_account_id' },
+        { id: 'key',       label: 'Key',                         ph: 'myapp' },
+      ],
+      code(p, k) {
+        return "// No API key needed — key must be set to public first\n" +
+          "fetch('/d2l/" + (p.accountId || ':accountId') + "/" + (p.key || ':key') + "')\n" +
+          "  .then(r => r.json())\n" +
+          "  .then(data => console.log(data.value))";
+      },
+      req(p, k) {
+        return { url: '/d2l/' + encodeURIComponent(p.accountId) + '/' + encodeURIComponent(p.key),
+          method: 'GET', headers: {} };
       }
     },
     {
