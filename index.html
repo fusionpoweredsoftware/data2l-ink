@@ -327,7 +327,7 @@
       padding: 12px 0 0;
       overflow: hidden;
     }
-    .key-list { display: flex; flex-direction: column; gap: 12px; }
+    .key-list { display: flex; flex-direction: column; gap: 24px; }
     .key-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -692,6 +692,7 @@
       position: relative;
       z-index: 1;
     }
+    footer .container { min-height: 0; }
 
     /* ── Hierarchy callout ───────────────────────────────────── */
     .hierarchy-callout {
@@ -782,10 +783,10 @@
       flex: 0 0 340px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 24px;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 24px 0 24px 0;
+      padding: 24px 24px 24px 0;
       scrollbar-gutter: stable;
     }
     .dash-right-pane {
@@ -793,16 +794,16 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 24px;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 24px 0 24px;
+      padding: 24px 16px 24px 16px;
       scrollbar-gutter: stable;
     }
     @media (max-width: 900px) {
-      .dash-pane-layout { flex-direction: column; overflow-y: auto; }
-      .dash-left-pane { flex: none; width: 100%; overflow: visible; padding: 12px 0 0; }
-      .dash-right-pane { overflow: visible; padding: 12px 0 20px; }
+      .dash-pane-layout { flex-direction: column; overflow-y: auto; scrollbar-gutter: stable; }
+      .dash-left-pane { flex: none; width: 100%; overflow: visible; padding: 12px 24px 0 0; }
+      .dash-right-pane { overflow: visible; padding: 12px 24px 20px 0; }
     }
 
     /* ── Browser panel ───────────────────────────────────── */
@@ -990,7 +991,7 @@
 
     <section class="code-section" id="api-examples">
       <h2 class="anim">Two storage methods. One framework.</h2>
-      <p class="subtitle anim anim-d1">A flat key-value store for simple data, plus a full hierarchical file system for structured projects.</p>
+      <p class="subtitle anim anim-d1">A flat key-value store for simple data, plus a full hierarchical file system for structured projects. KV keys can be made publicly accessible via URL.</p>
       <div class="code-grid anim anim-d2">
         <div class="code-card">
           <div class="code-card-header">
@@ -1028,7 +1029,7 @@ fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
         </div>
         <div class="code-card">
           <div class="code-card-header">
-            <span class="method method-list">GET</span>
+            <span class="method method-get">GET</span>
             <span class="endpoint">/api/data</span>
           </div>
           <pre><span class="comment">// List all your keys</span>
@@ -1080,8 +1081,8 @@ fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
             <span class="method method-get">GET</span>
             <span class="endpoint">/d2l/:accountId/:key</span>
           </div>
-          <pre><span class="comment">// Public link — no API key needed</span>
-<span class="comment">// Share this URL or open it in any browser:</span>
+          <pre><span class="comment">// Public link — share this URL openly</span>
+<span class="comment">// Open it in any browser or fetch it from your code:</span>
 fetch(<span class="str">'/d2l/your_account_id/myapp'</span>)
   .then(<span class="key">r</span> => r.json())
   .then(<span class="key">data</span> => {
@@ -1131,7 +1132,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>
         </div>
         <div class="code-card">
           <div class="code-card-header">
-            <span class="method method-put">PATCH</span>
+            <span class="method method-patch">PATCH</span>
             <span class="endpoint">/api/fs/:workspace/*path — surgical edit</span>
           </div>
           <pre><span class="comment">// Replace exactly one occurrence — must be unique</span>
@@ -1203,13 +1204,6 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
 
     <section class="features">
       <h2>Built for speed, not complexity.</h2>
-      <div class="hierarchy-callout">
-        <div class="hc-icon">🗂️</div>
-        <div>
-          <h3>Hierarchy makes data navigable</h3>
-          <p>The flat key-value store is great for simple lookups. But as your data grows, scanning a list of keys gets painful. JJFS lets you organise data as a real file tree — <code>default:/config/db.json</code>, <code>default:/users/profile.md</code>, <code>my-project:/src/app.js</code> — so finding things is as natural as navigating a project folder. No more guessing key names.</p>
-        </div>
-      </div>
       <div class="feature-grid">
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(108,92,231,0.12); color: var(--accent-bright);">⚡</div>
@@ -1218,8 +1212,8 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: var(--green-dim); color: var(--green);">🔑</div>
-          <h3>API key scoped</h3>
-          <p>Each key isolates your data. Create multiple keys for different projects — they never cross-contaminate.</p>
+          <h3>Fine-grained permissions</h3>
+          <p>Assign each API key its own privilege level — read-only, read-write, or admin. Lock down what each key can touch.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(255,192,72,0.12); color: var(--yellow);">📦</div>
@@ -1239,7 +1233,22 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         <div class="feature-card">
           <div class="feature-icon" style="background: var(--green-dim); color: var(--green);">🧩</div>
           <h3>Zero dependencies</h3>
-          <p>Pure Node.js, no frameworks, no bloat. Runs anywhere that runs JavaScript.</p>
+          <p>Just <code style="font-family:var(--font-mono);font-size:0.8rem;color:var(--accent-bright);background:var(--surface-2);padding:1px 5px;border-radius:3px;">fetch</code>. No SDK, no client library, no wrapper — plain HTTP. Works in any JavaScript environment.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(255,192,72,0.12); color: var(--yellow);">🔗</div>
+          <h3>Public shareable links</h3>
+          <p>Mark any KV key as public and share it as a plain URL — anyone with the link can read the value.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(56,189,248,0.12); color: #38bdf8;">⚗️</div>
+          <h3>Built-in playground</h3>
+          <p>Test every API call live from your dashboard — no client code needed. Dial in your requests before wiring them into your app.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(108,92,231,0.12); color: var(--accent-bright);">🗂️</div>
+          <h3>Hierarchy makes data navigable</h3>
+          <p>JJFS organises data as a real file tree — <code style="font-family:var(--font-mono);font-size:0.8rem;color:var(--accent-bright);background:var(--surface-2);padding:1px 5px;border-radius:3px;">default:/config/db.json</code> — so finding things is as natural as navigating a project folder.</p>
         </div>
       </div>
     </section>
@@ -2153,7 +2162,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         { id: 'key',       label: 'Key',                         ph: 'myapp' },
       ],
       code(p, k) {
-        return "// No API key needed — key must be set to public first\n" +
+        return "// Key must be set to public in the dashboard first\n" +
           "fetch('/d2l/" + (p.accountId || ':accountId') + "/" + (p.key || ':key') + "')\n" +
           "  .then(r => r.json())\n" +
           "  .then(data => console.log(data.value))";
