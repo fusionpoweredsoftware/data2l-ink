@@ -1244,7 +1244,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(255,192,72,0.12); color: var(--yellow);">🔗</div>
           <h3>Public shareable links</h3>
-          <p>Mark any KV key as public and share it as a plain URL — <code>/d2l/&lt;id&gt;/&lt;key&gt;</code>. No API key, no auth, just a link anyone can read.</p>
+          <p>Mark any KV key as public and share it as a plain URL — anyone with the link can read the value.</p>
         </div>
       </div>
     </section>
@@ -2158,7 +2158,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         { id: 'key',       label: 'Key',                         ph: 'myapp' },
       ],
       code(p, k) {
-        return "// No API key needed — key must be set to public first\n" +
+        return "// Key must be set to public in the dashboard first\n" +
           "fetch('/d2l/" + (p.accountId || ':accountId') + "/" + (p.key || ':key') + "')\n" +
           "  .then(r => r.json())\n" +
           "  .then(data => console.log(data.value))";
