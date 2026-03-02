@@ -32,16 +32,34 @@
         dominant-baseline: middle;
       }
     </style>
+    <!-- Clip region centered on the upper crossing point (~201, ~225) -->
+    <clipPath id="upper-cross-clip">
+      <circle cx="201" cy="225" r="50"/>
+    </clipPath>
   </defs>
 
   <rect width="512" height="512" rx="96" fill="#08090c"/>
 
+  <!-- Layer 1: Dim ring (gray) — back layer -->
   <g transform="rotate(-30 200 312)">
     <ellipse class="chain-dim" cx="200" cy="312" rx="120" ry="80"/>
   </g>
 
+  <!-- Layer 2: Accent ring (purple) — on top everywhere (correct at lower crossing) -->
   <g transform="rotate(-30 312 200)">
     <ellipse class="chain-accent" cx="312" cy="200" rx="120" ry="80"/>
+  </g>
+
+  <!-- Layer 3: At upper crossing only — erase accent ring by painting background
+       color along the dim ring path (stroke-width 40 to fully cover the purple) -->
+  <g transform="rotate(-30 200 312)" clip-path="url(#upper-cross-clip)">
+    <ellipse fill="none" stroke="#08090c" stroke-width="40" cx="200" cy="312" rx="120" ry="80"/>
+  </g>
+
+  <!-- Layer 4: At upper crossing only — redraw dim ring on top, making it appear
+       in front of the accent ring (chain-link interlocking effect) -->
+  <g transform="rotate(-30 200 312)" clip-path="url(#upper-cross-clip)">
+    <ellipse class="chain-dim" cx="200" cy="312" rx="120" ry="80"/>
   </g>
 
   <text class="txt-dim" x="185" y="330">10</text>
