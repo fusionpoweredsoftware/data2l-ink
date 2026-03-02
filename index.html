@@ -257,6 +257,8 @@
     }
     .feature-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
     .feature-card p { font-size: 0.88rem; color: var(--text-dim); line-height: 1.6; }
+    /* Centre a lone last card that opens a new row in the 3-column feature grid */
+    .feature-card:last-child:nth-child(3n + 1) { grid-column: 2 / 3; }
 
     /* ── Auth forms ──────────────────────────────────────── */
     .auth-section { padding: 80px 0; display: flex; justify-content: center; }
