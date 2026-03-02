@@ -62,12 +62,14 @@
     SVG arc: A 120 80 -30  large-arc=0  sweep=1 (clockwise = increasing t)
   -->
 
-  <!-- Layer 3: Erase accent ring — paint background color along dim-ring arc -->
-  <path fill="none" stroke="#08090c" stroke-width="40" stroke-linecap="round"
+  <!-- Layer 3: Erase accent ring — paint background color along dim-ring arc.
+       butt linecap: flat ends with no cap bleed beyond the arc endpoints. -->
+  <path fill="none" stroke="#08090c" stroke-width="32" stroke-linecap="butt"
         d="M 134.5 260.6 A 120 80 -30 0 1 270 225.4"/>
 
-  <!-- Layer 4: Redraw dim ring on top — gray now visually in front -->
-  <path fill="none" stroke="#e4e6f0" stroke-width="32" stroke-linecap="round"
+  <!-- Layer 4: Redraw dim ring on top — same width/linecap as erase so coverage
+       matches exactly, leaving no dark ring or rounded cap artifact. -->
+  <path fill="none" stroke="#e4e6f0" stroke-width="32" stroke-linecap="butt"
         d="M 134.5 260.6 A 120 80 -30 0 1 270 225.4"/>
 
   <text class="txt-dim" x="185" y="330">10</text>
