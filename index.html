@@ -990,7 +990,7 @@
 
     <section class="code-section" id="api-examples">
       <h2 class="anim">Two storage methods. One framework.</h2>
-      <p class="subtitle anim anim-d1">A flat key-value store for simple data, plus a full hierarchical file system for structured projects. KV keys can optionally be shared via a public URL — no API key required.</p>
+      <p class="subtitle anim anim-d1">A flat key-value store for simple data, plus a full hierarchical file system for structured projects. KV keys can be made publicly accessible via URL.</p>
       <div class="code-grid anim anim-d2">
         <div class="code-card">
           <div class="code-card-header">
@@ -1080,8 +1080,8 @@ fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
             <span class="method method-get">GET</span>
             <span class="endpoint">/d2l/:accountId/:key</span>
           </div>
-          <pre><span class="comment">// Public link — no API key needed</span>
-<span class="comment">// Share this URL or open it in any browser:</span>
+          <pre><span class="comment">// Public link — share this URL openly</span>
+<span class="comment">// Open it in any browser or fetch it from your code:</span>
 fetch(<span class="str">'/d2l/your_account_id/myapp'</span>)
   .then(<span class="key">r</span> => r.json())
   .then(<span class="key">data</span> => {
