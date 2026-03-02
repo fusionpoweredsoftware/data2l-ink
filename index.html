@@ -257,8 +257,6 @@
     }
     .feature-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
     .feature-card p { font-size: 0.88rem; color: var(--text-dim); line-height: 1.6; }
-    /* Centre a lone last card that opens a new row in the 3-column feature grid */
-    .feature-card:last-child:nth-child(3n + 1) { grid-column: 2 / 3; }
 
     /* ── Auth forms ──────────────────────────────────────── */
     .auth-section { padding: 80px 0; display: flex; justify-content: center; }
@@ -1206,13 +1204,6 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
 
     <section class="features">
       <h2>Built for speed, not complexity.</h2>
-      <div class="hierarchy-callout">
-        <div class="hc-icon">🗂️</div>
-        <div>
-          <h3>Hierarchy makes data navigable</h3>
-          <p>The flat key-value store is great for simple lookups. But as your data grows, scanning a list of keys gets painful. JJFS lets you organise data as a real file tree — <code>default:/config/db.json</code>, <code>default:/users/profile.md</code>, <code>my-project:/src/app.js</code> — so finding things is as natural as navigating a project folder. No more guessing key names.</p>
-        </div>
-      </div>
       <div class="feature-grid">
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(108,92,231,0.12); color: var(--accent-bright);">⚡</div>
@@ -1221,8 +1212,8 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: var(--green-dim); color: var(--green);">🔑</div>
-          <h3>API key scoped</h3>
-          <p>Each key isolates your data. Create multiple keys for different projects — they never cross-contaminate.</p>
+          <h3>Fine-grained permissions</h3>
+          <p>Assign each API key its own privilege level — read-only, read-write, or admin. Lock down what each key can touch.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(255,192,72,0.12); color: var(--yellow);">📦</div>
@@ -1248,6 +1239,16 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
           <div class="feature-icon" style="background: rgba(255,192,72,0.12); color: var(--yellow);">🔗</div>
           <h3>Public shareable links</h3>
           <p>Mark any KV key as public and share it as a plain URL — anyone with the link can read the value.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(56,189,248,0.12); color: #38bdf8;">⚗️</div>
+          <h3>Built-in playground</h3>
+          <p>Test every API call live from your dashboard — no client code needed. Dial in your requests before wiring them into your app.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(108,92,231,0.12); color: var(--accent-bright);">🗂️</div>
+          <h3>Hierarchy makes data navigable</h3>
+          <p>JJFS organises data as a real file tree — <code style="font-family:var(--font-mono);font-size:0.8rem;color:var(--accent-bright);background:var(--surface-2);padding:1px 5px;border-radius:3px;">default:/config/db.json</code> — so finding things is as natural as navigating a project folder.</p>
         </div>
       </div>
     </section>
