@@ -32,35 +32,43 @@
         dominant-baseline: middle;
       }
     </style>
-    <!-- Clip region centered on the upper crossing point (~201, ~225) -->
-    <clipPath id="upper-cross-clip">
-      <circle cx="201" cy="225" r="50"/>
-    </clipPath>
   </defs>
 
   <rect width="512" height="512" rx="96" fill="#08090c"/>
 
-  <!-- Layer 1: Dim ring (gray) — back layer -->
+  <!-- Layer 1: Full dim ring (gray) — back -->
   <g transform="rotate(-30 200 312)">
     <ellipse class="chain-dim" cx="200" cy="312" rx="120" ry="80"/>
   </g>
 
-  <!-- Layer 2: Accent ring (purple) — on top everywhere (correct at lower crossing) -->
+  <!-- Layer 2: Full accent ring (purple) — on top (correct at lower crossing) -->
   <g transform="rotate(-30 312 200)">
     <ellipse class="chain-accent" cx="312" cy="200" rx="120" ry="80"/>
   </g>
 
-  <!-- Layer 3: At upper crossing only — erase accent ring by painting background
-       color along the dim ring path (stroke-width 40 to fully cover the purple) -->
-  <g transform="rotate(-30 200 312)" clip-path="url(#upper-cross-clip)">
-    <ellipse fill="none" stroke="#08090c" stroke-width="40" cx="200" cy="312" rx="120" ry="80"/>
-  </g>
+  <!--
+    Layers 3 & 4: make the gray ring pass IN FRONT of the purple ring at the
+    upper crossing (~201, 225).
 
-  <!-- Layer 4: At upper crossing only — redraw dim ring on top, making it appear
-       in front of the accent ring (chain-link interlocking effect) -->
-  <g transform="rotate(-30 200 312)" clip-path="url(#upper-cross-clip)">
-    <ellipse class="chain-dim" cx="200" cy="312" rx="120" ry="80"/>
-  </g>
+    The dim ellipse (center 200,312; rx=120,ry=80; rot=-30°) in global coords:
+      x(t) = 200 + 103.92·cos(t) + 40·sin(t)
+      y(t) = 312 − 60·cos(t) + 69.28·sin(t)
+
+    Upper crossing is at t ≈ 292° → global point ≈ (201, 225).
+    Arc range t = 255° → 330° in global coords:
+      t=255°: (134.5, 260.6)
+      t=330°: (270.0, 225.4)
+
+    SVG arc: A 120 80 -30  large-arc=0  sweep=1 (clockwise = increasing t)
+  -->
+
+  <!-- Layer 3: Erase accent ring — paint background color along dim-ring arc -->
+  <path fill="none" stroke="#08090c" stroke-width="40" stroke-linecap="round"
+        d="M 134.5 260.6 A 120 80 -30 0 1 270 225.4"/>
+
+  <!-- Layer 4: Redraw dim ring on top — gray now visually in front -->
+  <path fill="none" stroke="#e4e6f0" stroke-width="32" stroke-linecap="round"
+        d="M 134.5 260.6 A 120 80 -30 0 1 270 225.4"/>
 
   <text class="txt-dim" x="185" y="330">10</text>
   <text class="txt-accent" x="330" y="195">01</text>
