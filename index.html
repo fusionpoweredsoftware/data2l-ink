@@ -990,7 +990,7 @@
 
     <section class="code-section" id="api-examples">
       <h2 class="anim">Two storage methods. One framework.</h2>
-      <p class="subtitle anim anim-d1">A flat key-value store for simple data, plus a full hierarchical file system for structured projects.</p>
+      <p class="subtitle anim anim-d1">A flat key-value store for simple data, plus a full hierarchical file system for structured projects. KV keys can optionally be shared via a public URL — no API key required.</p>
       <div class="code-grid anim anim-d2">
         <div class="code-card">
           <div class="code-card-header">
@@ -1240,6 +1240,11 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
           <div class="feature-icon" style="background: var(--green-dim); color: var(--green);">🧩</div>
           <h3>Zero dependencies</h3>
           <p>Pure Node.js, no frameworks, no bloat. Runs anywhere that runs JavaScript.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(255,192,72,0.12); color: var(--yellow);">🔗</div>
+          <h3>Public shareable links</h3>
+          <p>Mark any KV key as public and share it as a plain URL — <code>/d2l/&lt;id&gt;/&lt;key&gt;</code>. No API key, no auth, just a link anyone can read.</p>
         </div>
       </div>
     </section>
