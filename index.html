@@ -1663,7 +1663,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
   }
 
   async function createKey() {
-    const btn = document.querySelector('.generate-row .btn');
+    const btn = document.querySelector('.create-key-row .btn');
     const labelInput = document.getElementById('newKeyLabel');
     const label = labelInput.value || generateName();
     const kv = document.getElementById('new-key-kv')?.checked ?? true;
