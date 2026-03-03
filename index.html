@@ -490,8 +490,20 @@
       border-radius: var(--radius-lg);
       padding: 14px 18px;
     }
-    .create-key-row { display: flex; gap: 8px; align-items: center; }
-    .create-key-row input { flex: 1; }
+    .create-key-row { display: flex; gap: 8px; align-items: stretch; }
+    .create-key-row input {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .create-key-row input:focus { border-color: var(--accent); }
 
     .new-key-reveal {
       background: var(--green-dim);
