@@ -12,6 +12,7 @@ const ACCOUNTS_FILE    = path.join(__dirname, 'accounts.json');
 const SESSIONS_FILE    = path.join(__dirname, 'sessions.json');
 const WORKSPACES_FILE  = path.join(__dirname, 'workspaces.json');
 const VISIBILITY_FILE  = path.join(__dirname, 'visibility.json');
+const PERMISSIONS_FILE = path.join(__dirname, 'permissions.json');
 
 // ── In-memory stores ────────────────────────────────────────────────
 let dataStore    = {};   // { email: { key: value, ... } }
@@ -19,6 +20,7 @@ let accounts     = {};   // { email: { passwordHash, salt, publicId, apiKeys: [.
 let sessions     = {};   // { sessionToken: { email, created, expires } }
 let workspaces   = {};   // { email: { wsName: { path: content | dir } } }
 let kvVisibility = {};   // { email: { kvKey: 'public' } }  — absence means private
+let fsPermissions = {};  // { email: { "wsName:/path": { mode: "ro"|"rw", owner: apiKey|null } } }
 
 // ── Persistence ─────────────────────────────────────────────────────
 function loadFromDisk() {
@@ -37,6 +39,9 @@ function loadFromDisk() {
   try {
     if (fs.existsSync(VISIBILITY_FILE)) kvVisibility = JSON.parse(fs.readFileSync(VISIBILITY_FILE, 'utf8'));
   } catch (e) { console.error('Failed to load visibility:', e.message); kvVisibility = {}; }
+  try {
+    if (fs.existsSync(PERMISSIONS_FILE)) fsPermissions = JSON.parse(fs.readFileSync(PERMISSIONS_FILE, 'utf8'));
+  } catch (e) { console.error('Failed to load permissions:', e.message); fsPermissions = {}; }
 }
 
 function saveData()        { fs.writeFileSync(DATA_FILE,        JSON.stringify(dataStore,    null, 2)); }
@@ -44,6 +49,7 @@ function saveAccounts()    { fs.writeFileSync(ACCOUNTS_FILE,    JSON.stringify(a
 function saveSessions()    { fs.writeFileSync(SESSIONS_FILE,    JSON.stringify(sessions,     null, 2)); }
 function saveWorkspaces()  { fs.writeFileSync(WORKSPACES_FILE,  JSON.stringify(workspaces,   null, 2)); }
 function saveVisibility()  { fs.writeFileSync(VISIBILITY_FILE,  JSON.stringify(kvVisibility, null, 2)); }
+function savePermissions() { fs.writeFileSync(PERMISSIONS_FILE, JSON.stringify(fsPermissions, null, 2)); }
 
 // ── Generic helpers ──────────────────────────────────────────────────
 function hashPassword(password, salt) {
@@ -142,6 +148,73 @@ function provisionAccount(email) {
   if (!workspaces[email]) { workspaces[email] = { default: {} }; dirty = true; }
   if (!dataStore[email])  { dataStore[email]  = {};               dirty = true; }
   if (dirty) { saveWorkspaces(); saveData(); }
+}
+
+// ── JJFS File Permissions ─────────────────────────────────────────────
+// Returns the most specific applicable permission entry for a path (searching from the
+// given path up to the workspace root), or null if none found.
+function getEffectivePermission(email, wsName, filePath) {
+  const permsForEmail = fsPermissions[email] || {};
+  const normalized = '/' + (filePath || '').replace(/^\//, '');
+  const parts = normalized.replace(/^\//, '').split('/').filter(Boolean);
+  // Build list from most specific path to root: ['/a/b/c', '/a/b', '/a', '/']
+  const pathsToCheck = [];
+  let current = '';
+  for (const part of parts) { current += '/' + part; pathsToCheck.push(current); }
+  pathsToCheck.reverse();
+  pathsToCheck.push('/');
+  for (const p of pathsToCheck) {
+    const key = `${wsName}:${p}`;
+    if (permsForEmail[key]) return { ...permsForEmail[key], effectivePath: p, inherited: p !== normalized };
+  }
+  return null;
+}
+
+// Returns { allowed: true } or { allowed: false, error }.
+// Session auth (apiKeyString = null) always passes. Checks whether the path (or any
+// ancestor) is marked read-only by an explicit permission entry.
+function checkWriteAccess(email, wsName, filePath, apiKeyString) {
+  if (!apiKeyString) return { allowed: true };
+  const perm = getEffectivePermission(email, wsName, filePath);
+  if (!perm || perm.mode !== 'ro') return { allowed: true };
+  const loc = perm.inherited ? ` (inherited from ${wsName}:${perm.effectivePath})` : '';
+  return { allowed: false, error: `Path is read-only: ${wsName}:${filePath}${loc}` };
+}
+
+// Returns { allowed: true } or { allowed: false, error }.
+// Checks ownership at the EXACT path only (not inherited). Anyone can modify a path
+// with no explicit owner; otherwise only the owner API key may.
+function checkOwnerAccess(email, wsName, filePath, apiKeyString) {
+  if (!apiKeyString) return { allowed: true };
+  const permsForEmail = fsPermissions[email] || {};
+  const normalized = '/' + (filePath || '').replace(/^\//, '');
+  const perm = permsForEmail[`${wsName}:${normalized}`];
+  if (!perm || !perm.owner) return { allowed: true };
+  if (perm.owner === apiKeyString) return { allowed: true };
+  return { allowed: false, error: 'Only the owner can modify permissions for this path' };
+}
+
+// Upsert a permission entry; removes the entry entirely when it becomes a no-op (mode=rw, no owner).
+function setPermission(email, wsName, filePath, updates) {
+  if (!fsPermissions[email]) fsPermissions[email] = {};
+  const normalized = '/' + (filePath || '').replace(/^\//, '');
+  const key = `${wsName}:${normalized}`;
+  const merged = { ...fsPermissions[email][key], ...updates };
+  if ((!merged.mode || merged.mode === 'rw') && !merged.owner) {
+    delete fsPermissions[email][key];
+  } else {
+    fsPermissions[email][key] = merged;
+  }
+}
+
+// Remove all permission entries for a path and any paths under it (called on delete/move).
+function removePermissionsUnder(email, wsName, filePath) {
+  if (!fsPermissions[email]) return;
+  const normalized = '/' + (filePath || '').replace(/^\//, '');
+  const prefix = `${wsName}:${normalized}`;
+  for (const k of Object.keys(fsPermissions[email])) {
+    if (k === prefix || k.startsWith(prefix + '/')) delete fsPermissions[email][k];
+  }
 }
 
 // ── Session GC ───────────────────────────────────────────────────────
@@ -372,7 +445,7 @@ async function handleRequest(req, res) {
   // ── JJFS file system (API-key or session authenticated) ────────────
   if (pathname.startsWith('/api/fs')) {
     const apiKey = getApiKeyFromReq(req);
-    let wsForKey, perms;
+    let wsForKey, perms, email, apiKeyString;
 
     if (apiKey) {
       const ownerInfo = findAccountByApiKey(apiKey);
@@ -383,12 +456,16 @@ async function handleRequest(req, res) {
       if (!perms.fs) return json(res, 403, { error: 'This API key does not have filesystem access' });
       provisionAccount(ownerInfo.email);
       wsForKey = workspaces[ownerInfo.email];
+      email = ownerInfo.email;
+      apiKeyString = apiKey;
     } else {
       const session = getSessionFromReq(req);
       if (!session) return json(res, 401, { error: 'X-API-Key header required' });
       provisionAccount(session.email);
       wsForKey = workspaces[session.email];
       perms = { kv: true, fs: true, workspaces: '*', paths: {} };
+      email = session.email;
+      apiKeyString = null; // session auth = full access, bypasses permission checks
     }
 
     // POST /api/fs/execute — perform a JJFS operation
@@ -410,15 +487,20 @@ async function handleRequest(req, res) {
           result = jjfsRead(wsForKey, wsName, filePath, startLine, endLine);
           break;
 
-        case 'JJFS_WRITE':
+        case 'JJFS_WRITE': {
           if (content === undefined || content === null)
             return json(res, 400, { error: 'content is required for JJFS_WRITE' });
+          const ww = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          if (!ww.allowed) return json(res, 403, { error: ww.error });
           if (!wsForKey[wsName]) wsForKey[wsName] = {};
           result = jjfsWrite(wsForKey, wsName, filePath, content);
           if (result.success) saveWorkspaces();
           break;
+        }
 
         case 'JJFS_EDIT': {
+          const ew = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          if (!ew.allowed) return json(res, 403, { error: ew.error });
           let op;
           try { op = typeof content === 'string' ? JSON.parse(content) : content; }
           catch { return json(res, 400, { error: 'content must be JSON with {search, replace} for JJFS_EDIT' }); }
@@ -429,26 +511,69 @@ async function handleRequest(req, res) {
           break;
         }
 
-        case 'JJFS_DELETE':
+        case 'JJFS_DELETE': {
+          const dw = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          if (!dw.allowed) return json(res, 403, { error: dw.error });
           result = jjfsDelete(wsForKey, wsName, filePath);
           if (result.success) {
+            removePermissionsUnder(email, wsName, filePath);
+            savePermissions();
             if (wsName !== 'default' && Object.keys(wsForKey[wsName] || {}).length === 0)
               delete wsForKey[wsName];
             saveWorkspaces();
           }
           break;
+        }
 
-        case 'JJFS_MOVE':
+        case 'JJFS_MOVE': {
           if (!content) return json(res, 400, { error: 'content (destination path) is required for JJFS_MOVE' });
+          const msw = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          if (!msw.allowed) return json(res, 403, { error: msw.error });
+          const mdw = checkWriteAccess(email, wsName, content, apiKeyString);
+          if (!mdw.allowed) return json(res, 403, { error: mdw.error });
           result = jjfsMove(wsForKey, wsName, filePath, content);
-          if (result.success) saveWorkspaces();
+          if (result.success) {
+            removePermissionsUnder(email, wsName, filePath);
+            savePermissions();
+            saveWorkspaces();
+          }
           break;
+        }
 
-        case 'JJFS_COPY':
+        case 'JJFS_COPY': {
           if (!content) return json(res, 400, { error: 'content (destination path) is required for JJFS_COPY' });
+          const cw = checkWriteAccess(email, wsName, content, apiKeyString);
+          if (!cw.allowed) return json(res, 403, { error: cw.error });
           result = jjfsCopy(wsForKey, wsName, filePath, content);
           if (result.success) saveWorkspaces();
           break;
+        }
+
+        case 'JJFS_CHMOD': {
+          const mode = content;
+          if (mode !== 'ro' && mode !== 'rw')
+            return json(res, 400, { error: 'JJFS_CHMOD content must be "ro" or "rw"' });
+          const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
+          if (!oc.allowed) return json(res, 403, { error: oc.error });
+          setPermission(email, wsName, filePath, { mode });
+          savePermissions();
+          result = { success: true, result: `Mode set to ${mode}: ${wsName}:${filePath}` };
+          break;
+        }
+
+        case 'JJFS_CHOWN': {
+          const oo = checkOwnerAccess(email, wsName, filePath, apiKeyString);
+          if (!oo.allowed) return json(res, 403, { error: oo.error });
+          const newOwner = content || null;
+          if (newOwner) {
+            const keyExists = (accounts[email]?.apiKeys || []).some(k => k.key === newOwner);
+            if (!keyExists) return json(res, 400, { error: 'owner must be a valid API key belonging to this account' });
+          }
+          setPermission(email, wsName, filePath, { owner: newOwner });
+          savePermissions();
+          result = { success: true, result: newOwner ? `Owner set to ${newOwner}: ${wsName}:${filePath}` : `Owner removed: ${wsName}:${filePath}` };
+          break;
+        }
 
         default:
           return json(res, 400, { error: `Unknown operation type: ${type}` });
@@ -525,6 +650,74 @@ async function handleRequest(req, res) {
       });
     }
 
+    // GET /api/fs/permissions?workspace=name&path=/dir — read effective permissions
+    if (pathname === '/api/fs/permissions' && method === 'GET') {
+      const wsName = url.searchParams.get('workspace') || 'default';
+      const queryPath = url.searchParams.get('path');
+      const permsForEmail = fsPermissions[email] || {};
+
+      if (queryPath !== null) {
+        const perm = getEffectivePermission(email, wsName, queryPath);
+        return json(res, 200, {
+          workspace: wsName, path: queryPath,
+          mode: perm?.mode || 'rw',
+          owner: perm?.owner || null,
+          inherited: perm?.inherited ?? false,
+          effectivePath: perm?.effectivePath || null,
+        });
+      }
+
+      // List all explicit entries for this workspace
+      const entries = Object.entries(permsForEmail)
+        .filter(([k]) => k.startsWith(wsName + ':'))
+        .map(([k, v]) => ({ path: k.slice(wsName.length + 1), ...v }));
+      return json(res, 200, { workspace: wsName, permissions: entries });
+    }
+
+    // POST /api/fs/chmod — set read/write mode on a path
+    if (pathname === '/api/fs/chmod' && method === 'POST') {
+      let body;
+      try { body = JSON.parse(await readBody(req)); }
+      catch { return json(res, 400, { error: 'Invalid JSON body' }); }
+      const { target, mode } = body;
+      if (!target) return json(res, 400, { error: 'target is required' });
+      if (mode !== 'ro' && mode !== 'rw') return json(res, 400, { error: 'mode must be "ro" or "rw"' });
+      const parsed = parseTarget(target);
+      if (parsed.error) return json(res, 400, { error: parsed.error });
+      const { wsName, filePath } = parsed;
+      if (perms.workspaces !== '*' && !perms.workspaces.includes(wsName))
+        return json(res, 403, { error: `This API key does not have access to workspace: ${wsName}` });
+      const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
+      if (!oc.allowed) return json(res, 403, { error: oc.error });
+      setPermission(email, wsName, filePath, { mode });
+      savePermissions();
+      return json(res, 200, { success: true, workspace: wsName, path: filePath, mode });
+    }
+
+    // POST /api/fs/chown — set or remove the owner API key for a path
+    if (pathname === '/api/fs/chown' && method === 'POST') {
+      let body;
+      try { body = JSON.parse(await readBody(req)); }
+      catch { return json(res, 400, { error: 'Invalid JSON body' }); }
+      const { target, owner } = body;
+      if (!target) return json(res, 400, { error: 'target is required' });
+      const parsed = parseTarget(target);
+      if (parsed.error) return json(res, 400, { error: parsed.error });
+      const { wsName, filePath } = parsed;
+      if (perms.workspaces !== '*' && !perms.workspaces.includes(wsName))
+        return json(res, 403, { error: `This API key does not have access to workspace: ${wsName}` });
+      const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
+      if (!oc.allowed) return json(res, 403, { error: oc.error });
+      const newOwner = owner || null;
+      if (newOwner) {
+        const keyExists = (accounts[email]?.apiKeys || []).some(k => k.key === newOwner);
+        if (!keyExists) return json(res, 400, { error: 'owner must be a valid API key belonging to this account' });
+      }
+      setPermission(email, wsName, filePath, { owner: newOwner });
+      savePermissions();
+      return json(res, 200, { success: true, workspace: wsName, path: filePath, owner: newOwner });
+    }
+
     // REST: GET|PUT|PATCH|DELETE|POST /api/fs/:workspace/*path
     if (pathname.startsWith('/api/fs/')) {
       const fsSubpath = pathname.slice('/api/fs/'.length);
@@ -576,6 +769,8 @@ async function handleRequest(req, res) {
       }
 
       if (method === 'PUT') {
+        const wc = checkWriteAccess(email, wsName, filePath, apiKeyString);
+        if (!wc.allowed) return json(res, 403, { error: wc.error });
         if (!wsForKey[wsName]) wsForKey[wsName] = {};
         const content = await readBody(req);
         const r = jjfsWrite(wsForKey, wsName, filePath, content);
@@ -584,8 +779,12 @@ async function handleRequest(req, res) {
       }
 
       if (method === 'DELETE') {
+        const wc = checkWriteAccess(email, wsName, filePath, apiKeyString);
+        if (!wc.allowed) return json(res, 403, { error: wc.error });
         const r = jjfsDelete(wsForKey, wsName, filePath);
         if (r.success) {
+          removePermissionsUnder(email, wsName, filePath);
+          savePermissions();
           if (wsName !== 'default' && Object.keys(wsForKey[wsName] || {}).length === 0)
             delete wsForKey[wsName];
           saveWorkspaces();
@@ -600,6 +799,8 @@ async function handleRequest(req, res) {
         const { search, replace } = body;
         if (search === undefined || replace === undefined)
           return json(res, 400, { error: 'search and replace are required' });
+        const wc = checkWriteAccess(email, wsName, filePath, apiKeyString);
+        if (!wc.allowed) return json(res, 403, { error: wc.error });
         const r = jjfsEdit(wsForKey, wsName, filePath, search, replace);
         if (r.success) saveWorkspaces();
         return json(res, r.success ? 200 : 400, r);
@@ -612,9 +813,20 @@ async function handleRequest(req, res) {
         const { op, destination } = body;
         if (!op || !destination) return json(res, 400, { error: 'op and destination are required' });
         let r;
-        if (op === 'move')      r = jjfsMove(wsForKey, wsName, filePath, destination);
-        else if (op === 'copy') r = jjfsCopy(wsForKey, wsName, filePath, destination);
-        else return json(res, 400, { error: `Unknown op: ${op}. Use 'move' or 'copy'` });
+        if (op === 'move') {
+          const sw = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          if (!sw.allowed) return json(res, 403, { error: sw.error });
+          const dw = checkWriteAccess(email, wsName, destination, apiKeyString);
+          if (!dw.allowed) return json(res, 403, { error: dw.error });
+          r = jjfsMove(wsForKey, wsName, filePath, destination);
+          if (r.success) { removePermissionsUnder(email, wsName, filePath); savePermissions(); }
+        } else if (op === 'copy') {
+          const dw = checkWriteAccess(email, wsName, destination, apiKeyString);
+          if (!dw.allowed) return json(res, 403, { error: dw.error });
+          r = jjfsCopy(wsForKey, wsName, filePath, destination);
+        } else {
+          return json(res, 400, { error: `Unknown op: ${op}. Use 'move' or 'copy'` });
+        }
         if (r.success) saveWorkspaces();
         return json(res, r.success ? 200 : 400, r);
       }
