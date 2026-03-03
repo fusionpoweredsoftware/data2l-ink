@@ -332,51 +332,67 @@
       padding: 12px 0 0;
       overflow: hidden;
     }
-    .key-list { display: flex; flex-direction: column; gap: 24px; }
-    .key-card {
+    /* ── Key table ───────────────────────────────────────── */
+    .key-list-section {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .key-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+    }
+    .key-table-wrap {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 20px 24px;
+      overflow: hidden;
+    }
+    .key-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .key-table th {
+      background: var(--surface-2);
+      padding: 7px 10px;
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-faint);
+      border-bottom: 1px solid var(--border);
+    }
+    .key-table td {
+      padding: 7px 10px;
+      font-size: 0.82rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .key-table tbody tr:last-child td { border-bottom: none; }
+    .key-table tbody tr { cursor: pointer; transition: background 0.12s; }
+    .key-table tbody tr:hover { background: var(--surface-2); }
+    .key-table tbody tr.key-row-active { background: rgba(108,92,231,0.08); }
+    .key-table tbody tr.key-row-selected { background: rgba(108,92,231,0.12); }
+    .key-table .kt-label { font-weight: 600; }
+    .key-table .kt-mono { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); }
+    .key-table .kt-faint { color: var(--text-faint); font-size: 0.78rem; }
+    .key-table .kt-cb { width: 28px; padding-right: 0; }
+    .key-table th.kt-cb { padding-right: 0; }
+    .bulk-revoke-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      transition: border-color 0.2s;
-    }
-    .key-card:hover { border-color: var(--border-bright); }
-    .key-card-active { border-color: var(--accent) !important; }
-    .key-info { flex: 1; min-width: 200px; }
-    .key-label {
-      font-weight: 600;
-      font-size: 1rem;
-      margin-bottom: 4px;
-    }
-    .key-value {
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
-      color: var(--text-dim);
-      background: var(--surface-2);
-      padding: 4px 10px;
-      border-radius: 6px;
-      display: inline-block;
-    }
-    .key-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px 14px;
-      font-size: 0.8rem;
-      color: var(--text-faint);
-      margin-top: 8px;
-      font-family: var(--font-mono);
-    }
-    .key-actions { display: flex; gap: 8px; }
-    .create-key-perms {
+      padding: 10px 2px 0;
       border-top: 1px solid var(--border);
-      padding-top: 16px;
-      margin-top: 4px;
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: var(--text-dim);
     }
+    .bulk-revoke-bar.hidden { display: none; }
     .perms-toggles {
       display: flex;
       gap: 24px;
@@ -402,8 +418,6 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 180px;
-      overflow-y: auto;
       margin-bottom: 16px;
     }
     .perms-ws-row {
@@ -429,7 +443,7 @@
     .perms-path-input:focus { outline: none; border-color: var(--accent-bright); }
     .perms-ws-hint { color: var(--text-faint); font-size: 0.78rem; font-weight: 400; }
     .perms-ws-name-input {
-      flex: 0 0 140px;
+      flex: 0 0 180px;
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: 4px;
@@ -451,23 +465,7 @@
     }
     .perms-ws-remove:hover { color: var(--danger); }
 
-    /* Key card — privileges toggle */
-    .key-perms-toggle {
-      background: none; border: none; padding: 0;
-      color: var(--accent-bright); font-size: 0.78rem;
-      cursor: pointer; font-family: var(--font-body);
-    }
-    .key-perms-toggle:hover { text-decoration: underline; }
-
-    /* Expandable privileges panel */
-    .key-perms-detail {
-      display: none;
-      flex-basis: 100%; width: 100%;
-      border-top: 1px solid var(--border);
-      padding-top: 12px; margin-top: 4px;
-      font-size: 0.82rem; color: var(--text-dim);
-    }
-    .key-perms-detail.open { display: block; }
+    /* Privileges detail (shown in right pane) */
     .key-perms-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
     .perms-badge { padding: 1px 8px; border-radius: 100px; font-size: 0.75rem; font-family: var(--font-mono); }
     .perms-badge.on  { background: rgba(74,222,128,0.12); color: #4ade80; }
@@ -490,10 +488,22 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 20px 24px;
+      padding: 14px 18px;
     }
-    .create-key-form .form-group { margin-bottom: 14px; }
-    .create-key-form .generate-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+    .create-key-row { display: flex; gap: 8px; align-items: stretch; }
+    .create-key-row input {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .create-key-row input:focus { border-color: var(--accent); }
 
     .new-key-reveal {
       background: var(--green-dim);
@@ -785,12 +795,11 @@
       overflow: hidden;
     }
     .dash-left-pane {
-      flex: 0 0 340px;
+      flex: 0 0 600px;
       display: flex;
       flex-direction: column;
-      gap: 24px;
-      overflow-y: auto;
-      overflow-x: hidden;
+      gap: 16px;
+      overflow: hidden;
       padding: 24px 24px 24px 0;
       scrollbar-gutter: stable;
     }
@@ -880,19 +889,8 @@
       font-family: var(--font-mono);
     }
 
-    /* ── Key browse prompt (inline) ──────────────────────── */
-    .key-browse-prompt {
-      display: none;
-      flex-direction: column;
-      gap: 8px;
-      flex-basis: 100%;
-      padding: 12px 20px;
-      background: var(--surface-2);
-      border-top: 1px solid var(--border);
-    }
-    .key-browse-prompt.open { display: flex; }
-    .key-browse-prompt-label { font-size: 0.8rem; color: var(--text-dim); }
-    .key-browse-input-row { display: flex; gap: 8px; }
+    /* ── Key detail panel (right pane) ───────────────────── */
+    .key-browse-input-row { display: flex; gap: 8px; margin-top: 12px; }
     .key-browse-input-row input {
       flex: 1;
       padding: 7px 12px;
@@ -905,7 +903,7 @@
       outline: none;
     }
     .key-browse-input-row input:focus { border-color: var(--accent); }
-    .key-browse-error { font-size: 0.78rem; color: var(--red); display: none; }
+    .key-browse-error { font-size: 0.78rem; color: var(--red); display: none; margin-top: 4px; }
     .key-browse-error.show { display: block; }
 
     /* ── Visibility badge ────────────────────────────────── */
@@ -1306,11 +1304,38 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
           </div>
 
           <div class="create-key-form">
-            <div class="form-group">
-              <label>Key label</label>
-              <input type="text" id="newKeyLabel" placeholder="e.g. My project, Production, Testing...">
+            <div class="create-key-row">
+              <input type="text" id="newKeyLabel" placeholder="Key label (e.g. My project, Production…)">
+              <button class="btn btn-primary" onclick="createKey()">Generate key</button>
             </div>
-            <div class="create-key-perms">
+          </div>
+
+          <div class="key-list-section">
+            <div class="key-list" id="keyList">
+              <div class="empty-state">
+                <div class="icon">🔑</div>
+                <p>No API keys yet. Create one to get started.</p>
+              </div>
+            </div>
+            <div class="bulk-revoke-bar hidden" id="bulkRevokeBar">
+              <span id="bulkRevokeCount"></span>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-ghost btn-sm" onclick="clearSelection()">Clear</button>
+                <button class="btn btn-danger btn-sm" onclick="revokeSelected()">Revoke selected</button>
+              </div>
+            </div>
+          </div>
+        </div><!-- /dash-left-pane -->
+
+        <!-- ─── Right pane: browser ────────────────────────── -->
+        <div class="dash-right-pane">
+
+          <!-- New key permissions -->
+          <div class="browser-panel" id="newKeyPermsPanel">
+            <div class="browser-panel-header">
+              <span class="browser-panel-title">Permissions</span>
+            </div>
+            <div class="browser-body-padded">
               <div class="perms-toggles">
                 <label class="perms-toggle-label">
                   <input type="checkbox" id="new-key-kv" checked>
@@ -1329,21 +1354,23 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
                 <div class="perms-ws-list" id="new-key-wslist"></div>
               </div>
             </div>
-            <div class="generate-row">
-              <button class="btn btn-primary" onclick="createKey()">Generate key</button>
-            </div>
           </div>
 
-          <div class="key-list" id="keyList">
-            <div class="empty-state">
-              <div class="icon">🔑</div>
-              <p>No API keys yet. Create one to get started.</p>
+          <!-- Selected key detail: privileges + browse unlock -->
+          <div class="browser-panel hidden" id="keyDetailPanel">
+            <div class="browser-panel-header">
+              <span class="browser-panel-title">Key — <span id="keyDetailTitle"></span></span>
+            </div>
+            <div class="browser-body-padded">
+              <div id="keyDetailPerms" style="font-size:0.82rem;color:var(--text-dim);margin-bottom:4px;"></div>
+              <div class="key-browse-input-row">
+                <input type="password" id="keyDetailBrowseInput" placeholder="Paste key to open browser…" autocomplete="off"
+                       onkeydown="if(event.key==='Enter')openBrowser()">
+                <button class="btn btn-primary btn-sm" onclick="openBrowser()">Browse</button>
+              </div>
+              <div class="key-browse-error" id="keyDetailBrowseError">Invalid key — must match this key exactly.</div>
             </div>
           </div>
-        </div><!-- /dash-left-pane -->
-
-        <!-- ─── Right pane: browser ────────────────────────── -->
-        <div class="dash-right-pane">
 
           <!-- Account public ID -->
           <div class="account-id-bar" id="accountIdBar" style="display:none">
@@ -1356,7 +1383,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
           <!-- Locked state (no key selected yet) -->
           <div class="browser-locked" id="browserLocked">
             <div class="icon">🔍</div>
-            <p>Click <strong>Browse</strong> on an API key to explore your data and files.</p>
+            <p>Select an API key to see its privileges and open the data browser.</p>
           </div>
 
           <!-- KV Data browser -->
@@ -1456,6 +1483,8 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
   let accountPublicId = null;   // account's publicId (for public KV URLs)
   let browserApiKey   = null;   // API key currently unlocked in the browser
   let browserKeyLabel = null;   // label of the above key
+  let selectedKeyIdx  = null;   // row selected in key table
+  const checkedKeys   = new Set(); // indices of checked rows for bulk revoke
 
   const API = ''; // relative — same origin
 
@@ -1610,6 +1639,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       if (!res.ok) { showAuth('login'); return; }
       const data = await res.json();
       userKeys = data.keys || [];
+      checkedKeys.clear();
       availableWorkspaces = data.availableWorkspaces || [];
       accountPublicId = data.publicId || null;
       // Show account ID bar
@@ -1707,46 +1737,30 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     const container = document.getElementById('keyList');
     if (userKeys.length === 0) {
       container.innerHTML = '<div class="empty-state"><div class="icon">🔑</div><p>No API keys yet. Create one to get started.</p></div>';
+      updateBulkBar();
       return;
     }
-    container.innerHTML = userKeys.map((k, i) => {
-      const created = new Date(k.created).toLocaleDateString();
-      const lastUsed = k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never';
-      const masked = k.key.slice(0, 8) + '····' + k.key.slice(-6);
-      const perms = k.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} };
+    const rows = userKeys.map((k, i) => {
+      const masked = k.key.slice(0, 6) + '…' + k.key.slice(-4);
       const isActive = browserApiKey !== null && userKeys.findIndex(x => x.key === browserApiKey) === i;
-      return `
-        <div class="key-card${isActive ? ' key-card-active' : ''}" id="kcard-${i}">
-          <div class="key-info">
-            <div class="key-label">${escHtml(k.label)}</div>
-            <div class="key-value">${masked}</div>
-            <div class="key-meta">
-              <span>Created ${created}</span>
-              <span>Last used: ${lastUsed}</span>
-              <span>${k.entryCount} KV entries</span>
-              <span>${k.wsCount || 0} ws</span>
-              <span>${k.fsFileCount || 0} files</span>
-              <button class="key-perms-toggle" onclick="toggleKeyPerms(this)">Privileges &#9662;</button>
-            </div>
-          </div>
-          <div class="key-actions">
-            <button class="btn btn-ghost btn-sm" onclick="openBrowsePrompt(${i})">Browse</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteKey('${escHtml(k.key)}')">Revoke</button>
-          </div>
-          <div class="key-perms-detail">${renderPermsDetail(perms)}</div>
-          <div class="key-browse-prompt" id="kbrowse-${i}">
-            <span class="key-browse-prompt-label">Enter this API key to open the data browser</span>
-            <div class="key-browse-input-row">
-              <input type="password" id="kbrowse-input-${i}" placeholder="d2l_..." autocomplete="off"
-                     onkeydown="if(event.key==='Enter')openBrowser(${i})">
-              <button class="btn btn-primary btn-sm" onclick="openBrowser(${i})">Open</button>
-              <button class="btn btn-ghost btn-sm" onclick="closeBrowsePrompt(${i})">Cancel</button>
-            </div>
-            <span class="key-browse-error" id="kbrowse-err-${i}">Invalid key — must match this key exactly.</span>
-          </div>
-        </div>
-      `;
+      const rowClass = [isActive ? 'key-row-active' : '', selectedKeyIdx === i ? 'key-row-selected' : ''].filter(Boolean).join(' ');
+      const checked = checkedKeys.has(i) ? 'checked' : '';
+      return `<tr id="krow-${i}" class="${rowClass}" onclick="selectKey(${i})">
+        <td class="kt-cb"><input type="checkbox" ${checked} onclick="event.stopPropagation();toggleCheck(${i},this)"></td>
+        <td class="kt-label">${escHtml(k.label)}</td>
+        <td class="kt-mono">${masked}</td>
+        <td class="kt-faint">${k.entryCount}kv · ${k.wsCount || 0}ws · ${k.fsFileCount || 0}f</td>
+      </tr>`;
     }).join('');
+    const allChecked = checkedKeys.size === userKeys.length && userKeys.length > 0;
+    container.innerHTML = `<div class="key-table-wrap"><table class="key-table">
+      <thead><tr>
+        <th class="kt-cb"><input type="checkbox" ${allChecked ? 'checked' : ''} onclick="toggleSelectAll(this)" title="Select all"></th>
+        <th>Label</th><th>Key</th><th>Usage</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+    updateBulkBar();
   }
 
   function renderPermsDetail(p) {
@@ -1777,44 +1791,79 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
            wsSection;
   }
 
-  function toggleKeyPerms(btn) {
-    const detail = btn.closest('.key-card').querySelector('.key-perms-detail');
-    const open = detail.classList.toggle('open');
-    btn.textContent = open ? 'Privileges \u25b4' : 'Privileges \u25be';
+  // ── Key selection & detail panel ─────────────────────
+  function selectKey(idx) {
+    selectedKeyIdx = idx;
+    // Highlight row
+    document.querySelectorAll('.key-table tbody tr').forEach((tr, i) => {
+      tr.classList.toggle('key-row-selected', i === idx);
+    });
+    const k = userKeys[idx];
+    if (!k) return;
+    const perms = k.permissions ?? { kv: true, fs: true, workspaces: '*', paths: {} };
+    const panel = document.getElementById('keyDetailPanel');
+    panel.classList.remove('hidden');
+    document.getElementById('keyDetailTitle').textContent = k.label;
+    const created = new Date(k.created).toLocaleDateString();
+    const lastUsed = k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never';
+    const meta = `<div style="font-size:0.78rem;color:var(--text-faint);margin-bottom:10px">Created ${created} · Last used: ${lastUsed} · ${k.entryCount} KV entries · ${k.wsCount||0} workspaces · ${k.fsFileCount||0} files</div>`;
+    document.getElementById('keyDetailPerms').innerHTML = meta + renderPermsDetail(perms);
+    const inp = document.getElementById('keyDetailBrowseInput');
+    if (inp) { inp.value = ''; }
+    document.getElementById('keyDetailBrowseError').classList.remove('show');
+  }
+
+  // ── Checkbox / bulk selection ─────────────────────────
+  function toggleCheck(idx, cb) {
+    if (cb.checked) checkedKeys.add(idx); else checkedKeys.delete(idx);
+    updateBulkBar();
+  }
+
+  function toggleSelectAll(cb) {
+    if (cb.checked) userKeys.forEach((_, i) => checkedKeys.add(i));
+    else checkedKeys.clear();
+    renderKeys();
+  }
+
+  function updateBulkBar() {
+    const bar = document.getElementById('bulkRevokeBar');
+    const count = document.getElementById('bulkRevokeCount');
+    if (!bar) return;
+    if (checkedKeys.size === 0) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+    count.textContent = `${checkedKeys.size} key${checkedKeys.size > 1 ? 's' : ''} selected`;
+  }
+
+  function clearSelection() {
+    checkedKeys.clear();
+    renderKeys();
+  }
+
+  async function revokeSelected() {
+    if (checkedKeys.size === 0) return;
+    if (!confirm(`Revoke ${checkedKeys.size} API key${checkedKeys.size > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    const toRevoke = [...checkedKeys].map(i => userKeys[i].key);
+    checkedKeys.clear();
+    await Promise.all(toRevoke.map(key =>
+      fetch(`${API}/keys/${key}`, { method: 'DELETE', credentials: 'include' }).catch(() => {})
+    ));
+    loadKeys();
   }
 
   // ── Browser unlock flow ───────────────────────────────
-  function openBrowsePrompt(idx) {
-    // Close any other open prompts
-    document.querySelectorAll('.key-browse-prompt.open').forEach(el => el.classList.remove('open'));
-    const prompt = document.getElementById('kbrowse-' + idx);
-    if (prompt) {
-      prompt.classList.add('open');
-      const input = document.getElementById('kbrowse-input-' + idx);
-      if (input) { input.value = ''; input.focus(); }
-      const err = document.getElementById('kbrowse-err-' + idx);
-      if (err) err.classList.remove('show');
-    }
-  }
-
-  function closeBrowsePrompt(idx) {
-    const prompt = document.getElementById('kbrowse-' + idx);
-    if (prompt) prompt.classList.remove('open');
-  }
-
   function openBrowser(idx) {
+    if (idx === undefined) idx = selectedKeyIdx;
     const k = userKeys[idx];
     if (!k) return;
-    const input = document.getElementById('kbrowse-input-' + idx);
+    const input = document.getElementById('keyDetailBrowseInput');
     const entered = input ? input.value.trim() : '';
-    const err = document.getElementById('kbrowse-err-' + idx);
+    const err = document.getElementById('keyDetailBrowseError');
     if (entered !== k.key) {
       if (err) err.classList.add('show');
       return;
     }
     browserApiKey   = entered;
     browserKeyLabel = k.label;
-    closeBrowsePrompt(idx);
     // Show browser panels, hide locked state
     document.getElementById('browserLocked').style.display = 'none';
     document.getElementById('kvBrowserPanel').classList.remove('hidden');
