@@ -1202,6 +1202,47 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
 })
 <span class="comment">// → { success: true, result: "Created: default:/notes/new.md" }</span></pre>
         </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-list">POST</span>
+            <span class="endpoint">/api/fs/chmod — set permissions</span>
+          </div>
+          <pre><span class="comment">// Lock a path to read-only ("ro") or unlock it ("rw")</span>
+<span class="comment">// Applies to the path and everything beneath it</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/chmod'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
+    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+  },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">target</span>: <span class="str">'default:/notes/todo.md'</span>,
+    <span class="key">mode</span>: <span class="str">'ro'</span>
+  })
+})
+<span class="comment">// → { success: true, workspace: "default", path: "/notes/todo.md", mode: "ro" }</span>
+<span class="comment">// GET /api/fs/default/notes/todo.md now returns X-JJFS-Mode: ro</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="method method-list">POST</span>
+            <span class="endpoint">/api/fs/chown — set owner</span>
+          </div>
+          <pre><span class="comment">// Assign which API key controls chmod/chown for a path</span>
+<span class="comment">// Only the current owner (or session) can reassign ownership</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/chown'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: {
+    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
+    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+  },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">target</span>: <span class="str">'default:/notes/todo.md'</span>,
+    <span class="key">owner</span>: <span class="str">'d2l_other_key'</span>  <span class="comment">// null to remove</span>
+  })
+})
+<span class="comment">// → { success: true, workspace: "default", path: "/notes/todo.md", owner: "d2l_other_key" }</span></pre>
+        </div>
       </div>
     </section>
 
@@ -2390,6 +2431,56 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         return { url: '/api/fs/' + ws + '/' + path, method: 'POST',
           headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
           body: JSON.stringify({ op: 'copy', destination: p.destination || '' }) };
+      }
+    },
+    {
+      id: 'fs-chmod', group: 'fs', label: 'Set permissions', method: 'POST',
+      params: [
+        { id: 'target', label: 'Target (workspace:/path)', ph: 'default:/notes/todo.md' },
+        { id: 'mode',   label: 'Mode',                     ph: 'ro' },
+      ],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/fs/chmod', {\n" +
+          "  method: 'POST',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({\n" +
+          "    target: " + JSON.stringify(p.target || 'default:/path') + ",\n" +
+          "    mode: " + JSON.stringify(p.mode || 'ro') + "\n" +
+          "  })\n" +
+          "})";
+      },
+      req(p, k) {
+        return { url: '/api/fs/chmod', method: 'POST',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: p.target || '', mode: p.mode || 'ro' }) };
+      }
+    },
+    {
+      id: 'fs-chown', group: 'fs', label: 'Set owner', method: 'POST',
+      params: [
+        { id: 'target', label: 'Target (workspace:/path)',       ph: 'default:/notes/todo.md' },
+        { id: 'owner',  label: 'Owner API key (empty to remove)', ph: 'd2l_...' },
+      ],
+      code(p, k) {
+        return "fetch('https://data2l.ink/api/fs/chown', {\n" +
+          "  method: 'POST',\n" +
+          "  headers: {\n" +
+          "    'X-API-Key': '" + k + "',\n" +
+          "    'Content-Type': 'application/json'\n" +
+          "  },\n" +
+          "  body: JSON.stringify({\n" +
+          "    target: " + JSON.stringify(p.target || 'default:/path') + ",\n" +
+          "    owner: " + (p.owner ? JSON.stringify(p.owner) : 'null') + "\n" +
+          "  })\n" +
+          "})";
+      },
+      req(p, k) {
+        return { url: '/api/fs/chown', method: 'POST',
+          headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: p.target || '', owner: p.owner || null }) };
       }
     },
   ];

@@ -76,12 +76,13 @@ function json(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-function text(res, status, content) {
+function text(res, status, content, extraHeaders = {}) {
   res.writeHead(status, {
     'Content-Type': 'text/plain; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, Authorization',
+    ...extraHeaders,
   });
   res.end(content);
 }
@@ -650,30 +651,6 @@ async function handleRequest(req, res) {
       });
     }
 
-    // GET /api/fs/permissions?workspace=name&path=/dir — read effective permissions
-    if (pathname === '/api/fs/permissions' && method === 'GET') {
-      const wsName = url.searchParams.get('workspace') || 'default';
-      const queryPath = url.searchParams.get('path');
-      const permsForEmail = fsPermissions[email] || {};
-
-      if (queryPath !== null) {
-        const perm = getEffectivePermission(email, wsName, queryPath);
-        return json(res, 200, {
-          workspace: wsName, path: queryPath,
-          mode: perm?.mode || 'rw',
-          owner: perm?.owner || null,
-          inherited: perm?.inherited ?? false,
-          effectivePath: perm?.effectivePath || null,
-        });
-      }
-
-      // List all explicit entries for this workspace
-      const entries = Object.entries(permsForEmail)
-        .filter(([k]) => k.startsWith(wsName + ':'))
-        .map(([k, v]) => ({ path: k.slice(wsName.length + 1), ...v }));
-      return json(res, 200, { workspace: wsName, permissions: entries });
-    }
-
     // POST /api/fs/chmod — set read/write mode on a path
     if (pathname === '/api/fs/chmod' && method === 'POST') {
       let body;
@@ -756,7 +733,9 @@ async function handleRequest(req, res) {
             name: n, type: typeof v === 'object' ? 'directory' : 'file',
             ...(typeof v === 'string' ? { size: v.length } : { fileCount: countFiles(v) }),
           }));
-          return json(res, 200, { type: 'directory', workspace: wsName, path: filePath, entries });
+          const dp = getEffectivePermission(email, wsName, filePath);
+          return json(res, 200, { type: 'directory', workspace: wsName, path: filePath, entries,
+            mode: dp?.mode || 'rw', owner: dp?.owner || null });
         }
         let content = String(targetNode);
         const start = url.searchParams.get('start');
@@ -765,7 +744,11 @@ async function handleRequest(req, res) {
           const lines = content.split('\n');
           content = lines.slice(Math.max(0, parseInt(start) - 1), Math.min(lines.length, parseInt(end))).join('\n');
         }
-        return text(res, 200, content);
+        const fp = getEffectivePermission(email, wsName, filePath);
+        return text(res, 200, content, {
+          'X-JJFS-Mode': fp?.mode || 'rw',
+          'X-JJFS-Owner': fp?.owner || '',
+        });
       }
 
       if (method === 'PUT') {
