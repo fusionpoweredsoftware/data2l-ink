@@ -333,6 +333,18 @@
       overflow: hidden;
     }
     /* ── Key table ───────────────────────────────────────── */
+    .key-list-section {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .key-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+    }
     .key-table-wrap {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -345,7 +357,7 @@
     }
     .key-table th {
       background: var(--surface-2);
-      padding: 8px 12px;
+      padding: 7px 10px;
       text-align: left;
       font-size: 0.72rem;
       font-weight: 600;
@@ -355,7 +367,7 @@
       border-bottom: 1px solid var(--border);
     }
     .key-table td {
-      padding: 8px 12px;
+      padding: 7px 10px;
       font-size: 0.82rem;
       border-bottom: 1px solid var(--border);
       vertical-align: middle;
@@ -368,8 +380,19 @@
     .key-table .kt-label { font-weight: 600; }
     .key-table .kt-mono { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); }
     .key-table .kt-faint { color: var(--text-faint); font-size: 0.78rem; }
-    .key-table .kt-actions { display: flex; gap: 6px; justify-content: flex-end; }
-    .key-actions { display: flex; gap: 8px; }
+    .key-table .kt-cb { width: 28px; padding-right: 0; }
+    .key-table th.kt-cb { padding-right: 0; }
+    .bulk-revoke-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 2px 0;
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+    .bulk-revoke-bar.hidden { display: none; }
     .perms-toggles {
       display: flex;
       gap: 24px;
@@ -760,12 +783,11 @@
       overflow: hidden;
     }
     .dash-left-pane {
-      flex: 0 0 540px;
+      flex: 0 0 600px;
       display: flex;
       flex-direction: column;
-      gap: 24px;
-      overflow-y: auto;
-      overflow-x: hidden;
+      gap: 16px;
+      overflow: hidden;
       padding: 24px 24px 24px 0;
       scrollbar-gutter: stable;
     }
@@ -1276,10 +1298,19 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
             </div>
           </div>
 
-          <div class="key-list" id="keyList">
-            <div class="empty-state">
-              <div class="icon">🔑</div>
-              <p>No API keys yet. Create one to get started.</p>
+          <div class="key-list-section">
+            <div class="key-list" id="keyList">
+              <div class="empty-state">
+                <div class="icon">🔑</div>
+                <p>No API keys yet. Create one to get started.</p>
+              </div>
+            </div>
+            <div class="bulk-revoke-bar hidden" id="bulkRevokeBar">
+              <span id="bulkRevokeCount"></span>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-ghost btn-sm" onclick="clearSelection()">Clear</button>
+                <button class="btn btn-danger btn-sm" onclick="revokeSelected()">Revoke selected</button>
+              </div>
             </div>
           </div>
         </div><!-- /dash-left-pane -->
@@ -1441,6 +1472,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
   let browserApiKey   = null;   // API key currently unlocked in the browser
   let browserKeyLabel = null;   // label of the above key
   let selectedKeyIdx  = null;   // row selected in key table
+  const checkedKeys   = new Set(); // indices of checked rows for bulk revoke
 
   const API = ''; // relative — same origin
 
@@ -1595,6 +1627,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
       if (!res.ok) { showAuth('login'); return; }
       const data = await res.json();
       userKeys = data.keys || [];
+      checkedKeys.clear();
       availableWorkspaces = data.availableWorkspaces || [];
       accountPublicId = data.publicId || null;
       // Show account ID bar
@@ -1692,31 +1725,30 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     const container = document.getElementById('keyList');
     if (userKeys.length === 0) {
       container.innerHTML = '<div class="empty-state"><div class="icon">🔑</div><p>No API keys yet. Create one to get started.</p></div>';
+      updateBulkBar();
       return;
     }
     const rows = userKeys.map((k, i) => {
-      const created = new Date(k.created).toLocaleDateString();
-      const lastUsed = k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never';
-      const masked = k.key.slice(0, 8) + '····' + k.key.slice(-6);
+      const masked = k.key.slice(0, 6) + '…' + k.key.slice(-4);
       const isActive = browserApiKey !== null && userKeys.findIndex(x => x.key === browserApiKey) === i;
-      const isSelected = selectedKeyIdx === i;
-      return `<tr id="krow-${i}" class="${isActive ? 'key-row-active' : ''}" onclick="selectKey(${i})">
+      const rowClass = [isActive ? 'key-row-active' : '', selectedKeyIdx === i ? 'key-row-selected' : ''].filter(Boolean).join(' ');
+      const checked = checkedKeys.has(i) ? 'checked' : '';
+      return `<tr id="krow-${i}" class="${rowClass}" onclick="selectKey(${i})">
+        <td class="kt-cb"><input type="checkbox" ${checked} onclick="event.stopPropagation();toggleCheck(${i},this)"></td>
         <td class="kt-label">${escHtml(k.label)}</td>
         <td class="kt-mono">${masked}</td>
-        <td class="kt-faint">${created}</td>
-        <td class="kt-faint">${lastUsed}</td>
         <td class="kt-faint">${k.entryCount}kv · ${k.wsCount || 0}ws · ${k.fsFileCount || 0}f</td>
-        <td><div class="kt-actions">
-          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteKey('${escHtml(k.key)}')">Revoke</button>
-        </div></td>
       </tr>`;
     }).join('');
+    const allChecked = checkedKeys.size === userKeys.length && userKeys.length > 0;
     container.innerHTML = `<div class="key-table-wrap"><table class="key-table">
       <thead><tr>
-        <th>Label</th><th>Key</th><th>Created</th><th>Last used</th><th>Usage</th><th></th>
+        <th class="kt-cb"><input type="checkbox" ${allChecked ? 'checked' : ''} onclick="toggleSelectAll(this)" title="Select all"></th>
+        <th>Label</th><th>Key</th><th>Usage</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
+    updateBulkBar();
   }
 
   function renderPermsDetail(p) {
@@ -1760,10 +1792,50 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     const panel = document.getElementById('keyDetailPanel');
     panel.classList.remove('hidden');
     document.getElementById('keyDetailTitle').textContent = k.label;
-    document.getElementById('keyDetailPerms').innerHTML = renderPermsDetail(perms);
+    const created = new Date(k.created).toLocaleDateString();
+    const lastUsed = k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never';
+    const meta = `<div style="font-size:0.78rem;color:var(--text-faint);margin-bottom:10px">Created ${created} · Last used: ${lastUsed} · ${k.entryCount} KV entries · ${k.wsCount||0} workspaces · ${k.fsFileCount||0} files</div>`;
+    document.getElementById('keyDetailPerms').innerHTML = meta + renderPermsDetail(perms);
     const inp = document.getElementById('keyDetailBrowseInput');
     if (inp) { inp.value = ''; }
     document.getElementById('keyDetailBrowseError').classList.remove('show');
+  }
+
+  // ── Checkbox / bulk selection ─────────────────────────
+  function toggleCheck(idx, cb) {
+    if (cb.checked) checkedKeys.add(idx); else checkedKeys.delete(idx);
+    updateBulkBar();
+  }
+
+  function toggleSelectAll(cb) {
+    if (cb.checked) userKeys.forEach((_, i) => checkedKeys.add(i));
+    else checkedKeys.clear();
+    renderKeys();
+  }
+
+  function updateBulkBar() {
+    const bar = document.getElementById('bulkRevokeBar');
+    const count = document.getElementById('bulkRevokeCount');
+    if (!bar) return;
+    if (checkedKeys.size === 0) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+    count.textContent = `${checkedKeys.size} key${checkedKeys.size > 1 ? 's' : ''} selected`;
+  }
+
+  function clearSelection() {
+    checkedKeys.clear();
+    renderKeys();
+  }
+
+  async function revokeSelected() {
+    if (checkedKeys.size === 0) return;
+    if (!confirm(`Revoke ${checkedKeys.size} API key${checkedKeys.size > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    const toRevoke = [...checkedKeys].map(i => userKeys[i].key);
+    checkedKeys.clear();
+    await Promise.all(toRevoke.map(key =>
+      fetch(`${API}/keys/${key}`, { method: 'DELETE', credentials: 'include' }).catch(() => {})
+    ));
+    loadKeys();
   }
 
   // ── Browser unlock flow ───────────────────────────────
