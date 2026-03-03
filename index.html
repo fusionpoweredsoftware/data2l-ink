@@ -1473,6 +1473,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
   <div class="container">data2l.ink — cloud key-value storage</div>
 </footer>
 
+<script src="random-name-gen.js"></script>
 <script>
   // ── State ─────────────────────────────────────────────────────
   let session = localStorage.getItem('d2l_session') || null;
@@ -1538,12 +1539,18 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
     updateAuthForm();
   }
 
+  function refreshKeyLabelPlaceholder() {
+    const input = document.getElementById('newKeyLabel');
+    if (input) input.placeholder = generateName();
+  }
+
   function showDashboard() {
     if (!session) return showAuth('login');
     document.body.classList.add('dash-open');
     document.getElementById('landingPage').classList.add('hidden');
     document.getElementById('authPage').classList.add('hidden');
     document.getElementById('dashPage').classList.remove('hidden');
+    refreshKeyLabelPlaceholder();
     loadKeys();
   }
 
@@ -1656,8 +1663,9 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
   }
 
   async function createKey() {
-    const btn = document.querySelector('.generate-row .btn');
-    const label = document.getElementById('newKeyLabel').value || 'Untitled';
+    const btn = document.querySelector('.create-key-row .btn');
+    const labelInput = document.getElementById('newKeyLabel');
+    const label = labelInput.value || generateName();
     const kv = document.getElementById('new-key-kv')?.checked ?? true;
     const fs = document.getElementById('new-key-fs')?.checked ?? true;
     const selectedWs = [];
@@ -1692,6 +1700,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         document.getElementById('newKeyText').textContent = data.key;
         document.getElementById('pgKeyInput').value = data.key;
         document.getElementById('newKeyLabel').value = '';
+        refreshKeyLabelPlaceholder();
         btn.textContent = '✓ Key generated';
         btn.disabled = true;
         setTimeout(() => { btn.textContent = 'Generate key'; btn.disabled = false; }, 2000);
