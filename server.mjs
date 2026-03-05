@@ -703,56 +703,6 @@ async function handleRequest(req, res) {
       });
     }
 
-    // POST /api/fs/chmod — set read/write mode on a path (string or per-key ACL object)
-    if (pathname === '/api/fs/chmod' && method === 'POST') {
-      let body;
-      try { body = JSON.parse(await readBody(req)); }
-      catch { return json(res, 400, { error: 'Invalid JSON body' }); }
-      const { target, mode } = body;
-      if (!target) return json(res, 400, { error: 'target is required' });
-      if (!isValidMode(mode))
-        return json(res, 400, { error: 'mode must be "ro", "rw", or an ACL object { "d2l_key": "ro"|"rw", "*": "ro"|"rw" }' });
-      const parsed = parseTarget(target);
-      if (parsed.error) return json(res, 400, { error: parsed.error });
-      const { wsName, filePath } = parsed;
-      if (perms.workspaces !== '*' && !perms.workspaces.includes(wsName))
-        return json(res, 403, { error: `This API key does not have access to workspace: ${wsName}` });
-      const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
-      if (!oc.allowed) return json(res, 403, { error: oc.error });
-      setPermission(email, wsName, filePath, { mode });
-      savePermissions();
-      // Return the stored mode so callers can see the merged result
-      const stored = (fsPermissions[email] || {})[`${wsName}:${'/' + filePath.replace(/^\//, '')}`];
-      return json(res, 200, { success: true, workspace: wsName, path: filePath, mode: stored?.mode ?? 'rw' });
-    }
-
-    // POST /api/fs/chown — set or remove owner(s) for a path
-    // owner can be a string, an array of strings, or null to remove all owners
-    if (pathname === '/api/fs/chown' && method === 'POST') {
-      let body;
-      try { body = JSON.parse(await readBody(req)); }
-      catch { return json(res, 400, { error: 'Invalid JSON body' }); }
-      const { target, owner } = body;
-      if (!target) return json(res, 400, { error: 'target is required' });
-      const parsed = parseTarget(target);
-      if (parsed.error) return json(res, 400, { error: parsed.error });
-      const { wsName, filePath } = parsed;
-      if (perms.workspaces !== '*' && !perms.workspaces.includes(wsName))
-        return json(res, 403, { error: `This API key does not have access to workspace: ${wsName}` });
-      const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
-      if (!oc.allowed) return json(res, 403, { error: oc.error });
-      const newOwner = owner || null;
-      if (newOwner !== null) {
-        const ownerKeys = Array.isArray(newOwner) ? newOwner : [newOwner];
-        const acctKeys = (accounts[email]?.apiKeys || []).map(k => k.key);
-        const invalid = ownerKeys.filter(k => !acctKeys.includes(k));
-        if (invalid.length > 0) return json(res, 400, { error: 'owner must be valid API key(s) belonging to this account' });
-      }
-      setPermission(email, wsName, filePath, { owner: newOwner });
-      savePermissions();
-      return json(res, 200, { success: true, workspace: wsName, path: filePath, owner: newOwner });
-    }
-
     // REST: GET|PUT|PATCH|DELETE|POST /api/fs/:workspace/*path
     if (pathname.startsWith('/api/fs/')) {
       const fsSubpath = pathname.slice('/api/fs/'.length);
@@ -837,9 +787,36 @@ async function handleRequest(req, res) {
         let body;
         try { body = JSON.parse(await readBody(req)); }
         catch { return json(res, 400, { error: 'Invalid JSON body' }); }
-        const { search, replace } = body;
+        const { search, replace, chmod, chown } = body;
+
+        if (chmod !== undefined) {
+          if (!isValidMode(chmod))
+            return json(res, 400, { error: 'chmod must be "ro", "rw", or an ACL object' });
+          const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
+          if (!oc.allowed) return json(res, 403, { error: oc.error });
+          setPermission(email, wsName, filePath, { mode: chmod });
+          savePermissions();
+          const stored = (fsPermissions[email] || {})[`${wsName}:${'/' + filePath.replace(/^\//, '')}`];
+          return json(res, 200, { success: true, workspace: wsName, path: filePath, mode: stored?.mode ?? 'rw' });
+        }
+
+        if (chown !== undefined) {
+          const newOwner = chown || null;
+          if (newOwner !== null) {
+            const ownerKeys = Array.isArray(newOwner) ? newOwner : [newOwner];
+            const acctKeys = (accounts[email]?.apiKeys || []).map(k => k.key);
+            const invalid = ownerKeys.filter(k => !acctKeys.includes(k));
+            if (invalid.length > 0) return json(res, 400, { error: 'chown must be valid API key(s) belonging to this account' });
+          }
+          const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
+          if (!oc.allowed) return json(res, 403, { error: oc.error });
+          setPermission(email, wsName, filePath, { owner: newOwner });
+          savePermissions();
+          return json(res, 200, { success: true, workspace: wsName, path: filePath, owner: newOwner });
+        }
+
         if (search === undefined || replace === undefined)
-          return json(res, 400, { error: 'search and replace are required' });
+          return json(res, 400, { error: 'body must contain search+replace, chmod, or chown' });
         const wc = checkWriteAccess(email, wsName, filePath, apiKeyString);
         if (!wc.allowed) return json(res, 403, { error: wc.error });
         const r = jjfsEdit(wsForKey, wsName, filePath, search, replace);

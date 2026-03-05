@@ -1204,58 +1204,46 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
         </div>
         <div class="code-card">
           <div class="code-card-header">
-            <span class="method method-list">POST</span>
-            <span class="endpoint">/api/fs/chmod — set permissions</span>
+            <span class="method method-patch">PATCH</span>
+            <span class="endpoint">/api/fs/:workspace/*path — chmod</span>
           </div>
           <pre><span class="comment">// String: one mode for all keys — applies to path and everything under it</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/chmod'</span>, {
-  <span class="key">method</span>: <span class="str">'POST'</span>,
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">target</span>: <span class="str">'default:/notes'</span>, <span class="key">mode</span>: <span class="str">'ro'</span> })
+  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'ro'</span> })
 })
 
-<span class="comment">// ACL object: list as many keys as you need, each with its own mode</span>
-<span class="comment">// "*" is the catch-all for any key not explicitly listed</span>
+<span class="comment">// ACL object: per-key modes + "*" catch-all for everyone else</span>
 <span class="comment">// Entries are merged in; set a key to null to remove its override</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/chmod'</span>, {
-  <span class="key">method</span>: <span class="str">'POST'</span>,
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   <span class="key">body</span>: JSON.stringify({
-    <span class="key">target</span>: <span class="str">'default:/notes'</span>,
-    <span class="key">mode</span>: {
-      <span class="str">'*'</span>: <span class="str">'ro'</span>,           <span class="comment">// everyone else: read-only</span>
-      <span class="str">'d2l_editor_key'</span>: <span class="str">'rw'</span>,  <span class="comment">// editor: read-write</span>
-      <span class="str">'d2l_admin_key'</span>: <span class="str">'rw'</span>,   <span class="comment">// admin: read-write</span>
-      <span class="str">'d2l_guest_key'</span>: <span class="str">'ro'</span>    <span class="comment">// guest: explicitly read-only</span>
-    }
+    <span class="key">chmod</span>: { <span class="str">'*'</span>: <span class="str">'ro'</span>, <span class="str">'d2l_editor_key'</span>: <span class="str">'rw'</span>, <span class="str">'d2l_admin_key'</span>: <span class="str">'rw'</span> }
   })
 })
-<span class="comment">// → { mode: { "*": "ro", "d2l_editor_key": "rw", "d2l_admin_key": "rw", "d2l_guest_key": "ro" } }</span></pre>
+<span class="comment">// → { mode: { "*": "ro", "d2l_editor_key": "rw", "d2l_admin_key": "rw" } }</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
-            <span class="method method-list">POST</span>
-            <span class="endpoint">/api/fs/chown — set owner</span>
+            <span class="method method-patch">PATCH</span>
+            <span class="endpoint">/api/fs/:workspace/*path — chown</span>
           </div>
-          <pre><span class="comment">// Single owner — only this key can call chmod/chown on the path</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/chown'</span>, {
-  <span class="key">method</span>: <span class="str">'POST'</span>,
+          <pre><span class="comment">// Single owner — only this key can chmod/chown the path</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">target</span>: <span class="str">'default:/notes'</span>, <span class="key">owner</span>: <span class="str">'d2l_admin_key'</span> })
+  <span class="key">body</span>: JSON.stringify({ <span class="key">chown</span>: <span class="str">'d2l_admin_key'</span> })
 })
 
-<span class="comment">// Multiple owners — any key in the array can chmod/chown the path</span>
-<span class="comment">// Only the current owner(s) or a session can reassign ownership</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/chown'</span>, {
-  <span class="key">method</span>: <span class="str">'POST'</span>,
+<span class="comment">// Multiple owners — any key in the array can chmod/chown</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({
-    <span class="key">target</span>: <span class="str">'default:/notes'</span>,
-    <span class="key">owner</span>: [<span class="str">'d2l_admin_key'</span>, <span class="str">'d2l_editor_key'</span>, <span class="str">'d2l_bot_key'</span>]
-  })
+  <span class="key">body</span>: JSON.stringify({ <span class="key">chown</span>: [<span class="str">'d2l_admin_key'</span>, <span class="str">'d2l_editor_key'</span>] })
 })
-<span class="comment">// → { owner: ["d2l_admin_key", "d2l_editor_key", "d2l_bot_key"] }</span>
-<span class="comment">// Pass null to remove all owners (anyone can chmod/chown again)</span></pre>
+<span class="comment">// Pass null to remove all owners</span></pre>
         </div>
       </div>
     </section>
@@ -2448,59 +2436,61 @@ fetch(<span class="str">'https://data2l.ink/api/fs/chown'</span>, {
       }
     },
     {
-      id: 'fs-chmod', group: 'fs', label: 'Set permissions', method: 'POST',
+      id: 'fs-chmod', group: 'fs', label: 'chmod', method: 'PATCH',
       params: [
-        { id: 'target', label: 'Target (workspace:/path)', ph: 'default:/notes/todo.md' },
-        { id: 'mode',   label: 'Mode — string or ACL object', ph: 'ro  or  {"*":"ro","d2l_key":"rw"}' },
+        { id: 'workspace', label: 'Workspace',                     ph: 'default' },
+        { id: 'path',      label: 'Path',                          ph: 'notes/todo.md' },
+        { id: 'mode',      label: 'Mode — string or ACL object',   ph: 'ro  or  {"*":"ro","d2l_key":"rw"}' },
       ],
       code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
         let modeVal; try { modeVal = JSON.parse(p.mode); } catch { modeVal = p.mode || 'ro'; }
-        return "fetch('https://data2l.ink/api/fs/chmod', {\n" +
-          "  method: 'POST',\n" +
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'PATCH',\n" +
           "  headers: {\n" +
           "    'X-API-Key': '" + k + "',\n" +
           "    'Content-Type': 'application/json'\n" +
           "  },\n" +
-          "  body: JSON.stringify({\n" +
-          "    target: " + JSON.stringify(p.target || 'default:/path') + ",\n" +
-          "    mode: " + JSON.stringify(modeVal) + "\n" +
-          "  })\n" +
+          "  body: JSON.stringify({ chmod: " + JSON.stringify(modeVal) + " })\n" +
           "})";
       },
       req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || 'file.txt').replace(/^\//, '');
         let modeVal; try { modeVal = JSON.parse(p.mode); } catch { modeVal = p.mode || 'ro'; }
-        return { url: '/api/fs/chmod', method: 'POST',
+        return { url: '/api/fs/' + ws + '/' + path, method: 'PATCH',
           headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ target: p.target || '', mode: modeVal }) };
+          body: JSON.stringify({ chmod: modeVal }) };
       }
     },
     {
-      id: 'fs-chown', group: 'fs', label: 'Set owner', method: 'POST',
+      id: 'fs-chown', group: 'fs', label: 'chown', method: 'PATCH',
       params: [
-        { id: 'target', label: 'Target (workspace:/path)',                    ph: 'default:/notes/todo.md' },
-        { id: 'owner',  label: 'Owner key(s) — comma-separated, empty=none', ph: 'd2l_key1, d2l_key2' },
+        { id: 'workspace', label: 'Workspace',                                ph: 'default' },
+        { id: 'path',      label: 'Path',                                     ph: 'notes/todo.md' },
+        { id: 'owner',     label: 'Owner key(s) — comma-separated, empty=none', ph: 'd2l_key1, d2l_key2' },
       ],
       code(p, k) {
+        const ws = p.workspace || 'default', path = p.path || 'file.txt';
         const ownerVal = p.owner ? p.owner.split(',').map(s => s.trim()).filter(Boolean) : null;
         const ownerDisplay = ownerVal ? (ownerVal.length === 1 ? JSON.stringify(ownerVal[0]) : JSON.stringify(ownerVal)) : 'null';
-        return "fetch('https://data2l.ink/api/fs/chown', {\n" +
-          "  method: 'POST',\n" +
+        return "fetch('https://data2l.ink/api/fs/" + ws + "/" + path + "', {\n" +
+          "  method: 'PATCH',\n" +
           "  headers: {\n" +
           "    'X-API-Key': '" + k + "',\n" +
           "    'Content-Type': 'application/json'\n" +
           "  },\n" +
-          "  body: JSON.stringify({\n" +
-          "    target: " + JSON.stringify(p.target || 'default:/path') + ",\n" +
-          "    owner: " + ownerDisplay + "\n" +
-          "  })\n" +
+          "  body: JSON.stringify({ chown: " + ownerDisplay + " })\n" +
           "})";
       },
       req(p, k) {
+        const ws = encodeURIComponent(p.workspace || 'default');
+        const path = (p.path || 'file.txt').replace(/^\//, '');
         const ownerVal = p.owner ? p.owner.split(',').map(s => s.trim()).filter(Boolean) : null;
         const owner = ownerVal ? (ownerVal.length === 1 ? ownerVal[0] : ownerVal) : null;
-        return { url: '/api/fs/chown', method: 'POST',
+        return { url: '/api/fs/' + ws + '/' + path, method: 'PATCH',
           headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ target: p.target || '', owner }) };
+          body: JSON.stringify({ chown: owner }) };
       }
     },
   ];
