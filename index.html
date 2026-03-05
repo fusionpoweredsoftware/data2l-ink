@@ -1227,50 +1227,32 @@ fetch(<span class="str">'https://data2l.ink/d2l/your_account_id/myapp'</span>)
             <span class="method method-put">PUT</span>
             <span class="endpoint">/api/fs/:workspace/*path — write a file</span>
           </div>
-          <pre><span class="comment">// Create or overwrite — body is raw file content</span>
+          <pre><span class="comment">// Create or overwrite — body is raw content</span>
+<span class="comment">// Paths starting with "." are dotfiles, hidden from listings by default (?all=1 to show)</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
   <span class="key">method</span>: <span class="str">'PUT'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> },
   <span class="key">body</span>: <span class="str">'# My Notes\n- Item 1'</span>
 })
-<span class="comment">// → { success: true, result: "Created: default:/notes/todo.md" }</span>
-
-<span class="comment">// curl</span>
-curl -X PUT https://data2l.ink/api/fs/default/notes/todo.md \
-  -H <span class="str">'X-API-Key: d2l_your_key'</span> \
-  --data <span class="str">'# My Notes'</span>
-
-<span class="comment">// Dotfiles — names starting with "." are hidden from listings by default (?all=1 to show)</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/default/.gitignore'</span>, {
-  <span class="key">method</span>: <span class="str">'PUT'</span>,
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> },
-  <span class="key">body</span>: <span class="str">'node_modules/\n.env'</span>
-})</pre>
+<span class="comment">// → { success: true, result: "Created: default:/notes/todo.md" }</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
             <span class="method method-get">GET</span>
             <span class="endpoint">/api/fs/:workspace/*path — read a file or dir</span>
           </div>
-          <pre><span class="comment">// Read a file — returns raw text</span>
+          <pre><span class="comment">// Read file — ?start=10&amp;end=20 for a line range</span>
+<span class="comment">// Response headers: X-JJFS-Timestamps, X-JJFS-Permission</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
-})
-.then(<span class="key">r</span> => r.text())
-.then(console.log)
+}).then(<span class="key">r</span> => r.text()).then(console.log)
 <span class="comment">// → "# My Notes\n- Item 1"</span>
 
-<span class="comment">// Optional: read lines 10–20 only  →  ?start=10&amp;end=20</span>
-
-<span class="comment">// List directory — dotfiles hidden unless ?all=1</span>
+<span class="comment">// List directory — ?all=1 to include dotfiles</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes?all=1'</span>, {
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
-})
-<span class="comment">// → { entries: [...], timestamps: { birthtime, mtime, ctime }, permission: {...} }</span>
-
-<span class="comment">// File responses carry POSIX metadata in response headers:</span>
-<span class="comment">// X-JJFS-Timestamps: {"birthtime":"2026-...","mtime":"2026-...","ctime":"2026-..."}</span>
-<span class="comment">// X-JJFS-Permission: {"mode":"644","owner":null}</span></pre>
+}).then(<span class="key">r</span> => r.json()).then(console.log)
+<span class="comment">// → { entries: [...], timestamps: { birthtime, mtime, ctime }, permission: {...} }</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
@@ -1346,22 +1328,15 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
             <span class="method method-patch">PATCH</span>
             <span class="endpoint">/api/fs/:workspace/*path — chmod</span>
           </div>
-          <pre><span class="comment">// POSIX octal — owner=rw (6), group=r (4), other=r (4)</span>
+          <pre><span class="comment">// POSIX octal — owner=rw (6), group=r (4), other=r (4)  |  "ro"/"rw" also accepted</span>
+<span class="comment">// Prefix with 1 for sticky bit (1755), 4 for SUID, 2 for SGID</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
   <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'644'</span> })  <span class="comment">// also: '600', '755', '1755' (sticky)</span>
+  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'644'</span> })
 })
 
-<span class="comment">// Legacy strings still accepted</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
-  <span class="key">method</span>: <span class="str">'PATCH'</span>,
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'ro'</span> })
-})
-
-<span class="comment">// ACL object: per-key modes (octal digit or "ro"/"rw") + "*" catch-all</span>
-<span class="comment">// Entries are merged in; set a key to null to remove its override</span>
+<span class="comment">// ACL object: per-key bits — "*" is the catch-all; null removes a key's override</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
   <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
@@ -1369,51 +1344,28 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
     <span class="key">chmod</span>: { <span class="str">'*'</span>: <span class="str">'4'</span>, <span class="str">'d2l_editor_key'</span>: <span class="str">'6'</span>, <span class="str">'d2l_admin_key'</span>: <span class="str">'7'</span> }
   })
 })
-<span class="comment">// → { permission: { mode: { "*": "4", "sha256(d2l_editor_key)": "6", ... }, owner: null } }</span>
-
-<span class="comment">// Sticky bit (mode "1xxx") on a directory — only the file or dir owner may delete within</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/default/shared'</span>, {
-  <span class="key">method</span>: <span class="str">'PATCH'</span>,
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'1755'</span> })  <span class="comment">// rwxr-xr-x + sticky</span>
-})
-<span class="comment">// SUID "4xxx" / SGID "2xxx" — stored and reported; advisory for external exec systems</span></pre>
+<span class="comment">// → { permission: { mode: { "*": "4", "sha256(d2l_editor_key)": "6", ... }, owner: null } }</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
             <span class="method method-patch">PATCH</span>
             <span class="endpoint">/api/fs/:workspace/*path — chown</span>
           </div>
-          <pre><span class="comment">// Single owner — only this key can chmod/chown the path</span>
+          <pre><span class="comment">// Set owner — only this key can chmod/chown the path  (null to remove, array for multi)</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
   <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   <span class="key">body</span>: JSON.stringify({ <span class="key">chown</span>: <span class="str">'d2l_admin_key'</span> })
 })
 
-<span class="comment">// Multiple owners — any key in the array can chmod/chown</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
-  <span class="key">method</span>: <span class="str">'PATCH'</span>,
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">chown</span>: [<span class="str">'d2l_admin_key'</span>, <span class="str">'d2l_editor_key'</span>] })
-})
-<span class="comment">// Pass null to remove all owners</span>
-
-<span class="comment">// Extended attributes — arbitrary metadata per path (user.* or trusted.* namespace)</span>
+<span class="comment">// Same PATCH body also handles: xattr (extended attrs), symlink (soft link)</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
   <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   <span class="key">body</span>: JSON.stringify({ <span class="key">xattr</span>: { <span class="key">set</span>: { <span class="str">'user.tag'</span>: <span class="str">'draft'</span> }, <span class="key">remove</span>: [] } })
+  <span class="comment">// or: { symlink: '/notes/2026-03-05.md' }  — GET ?nofollow=1 to inspect the link</span>
 })
-<span class="comment">// → { xattrs: { "user.tag": "draft" } }</span>
-
-<span class="comment">// Symbolic link — soft link to another path in the same workspace</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/latest.md'</span>, {
-  <span class="key">method</span>: <span class="str">'PATCH'</span>,
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">symlink</span>: <span class="str">'/notes/2026-03-05.md'</span> })
-})
-<span class="comment">// GET ?nofollow=1 to inspect the symlink itself instead of following it</span></pre>
+<span class="comment">// → { xattrs: { "user.tag": "draft" } }</span></pre>
         </div>
       </div>
     </section>
