@@ -1086,7 +1086,7 @@ fetch(<span class="str">'https://data2l.ink/api/data/myapp'</span>, {
           </div>
           <pre><span class="comment">// Public link — share this URL openly</span>
 <span class="comment">// Open it in any browser or fetch it from your code:</span>
-fetch(<span class="str">'/d2l/your_account_id/myapp'</span>)
+fetch(<span class="str">'https://data2l.ink/d2l/your_account_id/myapp'</span>)
   .then(<span class="key">r</span> => r.json())
   .then(<span class="key">data</span> => {
     console.log(data.value)
@@ -2269,7 +2269,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
       ],
       code(p, k) {
         return "// Key must be set to public in the dashboard first\n" +
-          "fetch('/d2l/" + (p.accountId || ':accountId') + "/" + (p.key || ':key') + "')\n" +
+          "fetch('https://data2l.ink/d2l/" + (p.accountId || ':accountId') + "/" + (p.key || ':key') + "')\n" +
           "  .then(r => r.json())\n" +
           "  .then(data => console.log(data.value))";
       },
