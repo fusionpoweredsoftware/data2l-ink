@@ -1207,21 +1207,24 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
             <span class="method method-list">POST</span>
             <span class="endpoint">/api/fs/chmod — set permissions</span>
           </div>
-          <pre><span class="comment">// Lock a path to read-only ("ro") or unlock it ("rw")</span>
-<span class="comment">// Applies to the path and everything beneath it</span>
+          <pre><span class="comment">// String: one mode for all keys — applies to path and everything under it</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/chmod'</span>, {
   <span class="key">method</span>: <span class="str">'POST'</span>,
-  <span class="key">headers</span>: {
-    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
-    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
-  },
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">target</span>: <span class="str">'default:/notes'</span>, <span class="key">mode</span>: <span class="str">'ro'</span> })
+})
+
+<span class="comment">// ACL object: per-key overrides + "*" catch-all for everyone else</span>
+<span class="comment">// Entries are merged in; set a key to null to remove its override</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/chmod'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   <span class="key">body</span>: JSON.stringify({
-    <span class="key">target</span>: <span class="str">'default:/notes/todo.md'</span>,
-    <span class="key">mode</span>: <span class="str">'ro'</span>
+    <span class="key">target</span>: <span class="str">'default:/notes'</span>,
+    <span class="key">mode</span>: { <span class="str">'*'</span>: <span class="str">'ro'</span>, <span class="str">'d2l_trusted_key'</span>: <span class="str">'rw'</span> }
   })
 })
-<span class="comment">// → { success: true, workspace: "default", path: "/notes/todo.md", mode: "ro" }</span>
-<span class="comment">// GET /api/fs/default/notes/todo.md now returns X-JJFS-Mode: ro</span></pre>
+<span class="comment">// → { mode: { "*": "ro", "d2l_trusted_key": "rw" } }</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
@@ -2437,9 +2440,10 @@ fetch(<span class="str">'https://data2l.ink/api/fs/chown'</span>, {
       id: 'fs-chmod', group: 'fs', label: 'Set permissions', method: 'POST',
       params: [
         { id: 'target', label: 'Target (workspace:/path)', ph: 'default:/notes/todo.md' },
-        { id: 'mode',   label: 'Mode',                     ph: 'ro' },
+        { id: 'mode',   label: 'Mode — string or ACL object', ph: 'ro  or  {"*":"ro","d2l_key":"rw"}' },
       ],
       code(p, k) {
+        let modeVal; try { modeVal = JSON.parse(p.mode); } catch { modeVal = p.mode || 'ro'; }
         return "fetch('https://data2l.ink/api/fs/chmod', {\n" +
           "  method: 'POST',\n" +
           "  headers: {\n" +
@@ -2448,14 +2452,15 @@ fetch(<span class="str">'https://data2l.ink/api/fs/chown'</span>, {
           "  },\n" +
           "  body: JSON.stringify({\n" +
           "    target: " + JSON.stringify(p.target || 'default:/path') + ",\n" +
-          "    mode: " + JSON.stringify(p.mode || 'ro') + "\n" +
+          "    mode: " + JSON.stringify(modeVal) + "\n" +
           "  })\n" +
           "})";
       },
       req(p, k) {
+        let modeVal; try { modeVal = JSON.parse(p.mode); } catch { modeVal = p.mode || 'ro'; }
         return { url: '/api/fs/chmod', method: 'POST',
           headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ target: p.target || '', mode: p.mode || 'ro' }) };
+          body: JSON.stringify({ target: p.target || '', mode: modeVal }) };
       }
     },
     {

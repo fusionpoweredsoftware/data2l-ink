@@ -171,13 +171,32 @@ function getEffectivePermission(email, wsName, filePath) {
   return null;
 }
 
+// Resolve the effective mode string ("ro"/"rw") for a specific API key, honouring per-key
+// ACL entries. mode can be a bare string or an object { "*": "ro", "d2l_key": "rw", ... }.
+function getModeForKey(perm, apiKeyString) {
+  const m = perm?.mode;
+  if (!m) return 'rw';
+  if (typeof m === 'string') return m;
+  if (typeof m === 'object') return m[apiKeyString] ?? m['*'] ?? 'rw';
+  return 'rw';
+}
+
+// Validate a mode value: string "ro"/"rw", or ACL object { key: "ro"|"rw"|null, ... }.
+function isValidMode(mode) {
+  if (mode === 'ro' || mode === 'rw') return true;
+  if (typeof mode === 'object' && mode !== null && !Array.isArray(mode))
+    return Object.values(mode).every(v => v === 'ro' || v === 'rw' || v === null);
+  return false;
+}
+
 // Returns { allowed: true } or { allowed: false, error }.
-// Session auth (apiKeyString = null) always passes. Checks whether the path (or any
-// ancestor) is marked read-only by an explicit permission entry.
+// Session auth (apiKeyString = null) always passes. Resolves the mode for the requesting
+// key specifically, so per-key ACL entries are respected.
 function checkWriteAccess(email, wsName, filePath, apiKeyString) {
   if (!apiKeyString) return { allowed: true };
   const perm = getEffectivePermission(email, wsName, filePath);
-  if (!perm || perm.mode !== 'ro') return { allowed: true };
+  const mode = getModeForKey(perm, apiKeyString);
+  if (mode !== 'ro') return { allowed: true };
   const loc = perm.inherited ? ` (inherited from ${wsName}:${perm.effectivePath})` : '';
   return { allowed: false, error: `Path is read-only: ${wsName}:${filePath}${loc}` };
 }
@@ -195,16 +214,45 @@ function checkOwnerAccess(email, wsName, filePath, apiKeyString) {
   return { allowed: false, error: 'Only the owner can modify permissions for this path' };
 }
 
-// Upsert a permission entry; removes the entry entirely when it becomes a no-op (mode=rw, no owner).
+// Upsert a permission entry.
+// mode updates: string replaces entirely; object merges (null values remove individual keys).
+// Removes the entry altogether when it becomes a no-op (no meaningful mode, no owner).
 function setPermission(email, wsName, filePath, updates) {
   if (!fsPermissions[email]) fsPermissions[email] = {};
   const normalized = '/' + (filePath || '').replace(/^\//, '');
   const key = `${wsName}:${normalized}`;
-  const merged = { ...fsPermissions[email][key], ...updates };
-  if ((!merged.mode || merged.mode === 'rw') && !merged.owner) {
+  const existing = fsPermissions[email][key] || {};
+
+  let newMode = existing.mode;
+  if (updates.mode !== undefined) {
+    if (typeof updates.mode === 'string') {
+      newMode = updates.mode; // replace entirely
+    } else if (typeof updates.mode === 'object' && updates.mode !== null) {
+      // Merge into existing; null values remove individual key entries.
+      const base = typeof existing.mode === 'string' ? { '*': existing.mode }
+                 : typeof existing.mode === 'object' ? { ...existing.mode } : {};
+      for (const [k, v] of Object.entries(updates.mode)) {
+        if (v === null) delete base[k]; else base[k] = v;
+      }
+      // Simplify a single-key '*' object back to a plain string.
+      const keys = Object.keys(base);
+      newMode = keys.length === 0 ? undefined
+              : keys.length === 1 && base['*'] ? base['*']
+              : base;
+    }
+  }
+
+  const newOwner = updates.owner !== undefined ? updates.owner : existing.owner;
+  const modeIsDefault = !newMode || newMode === 'rw'
+    || (typeof newMode === 'object' && Object.keys(newMode).length === 0);
+
+  if (modeIsDefault && !newOwner) {
     delete fsPermissions[email][key];
   } else {
-    fsPermissions[email][key] = merged;
+    fsPermissions[email][key] = {
+      ...(modeIsDefault ? {} : { mode: newMode }),
+      ...(newOwner ? { owner: newOwner } : {}),
+    };
   }
 }
 
@@ -552,13 +600,13 @@ async function handleRequest(req, res) {
 
         case 'JJFS_CHMOD': {
           const mode = content;
-          if (mode !== 'ro' && mode !== 'rw')
-            return json(res, 400, { error: 'JJFS_CHMOD content must be "ro" or "rw"' });
+          if (!isValidMode(mode))
+            return json(res, 400, { error: 'JJFS_CHMOD content must be "ro", "rw", or an ACL object { "d2l_key": "ro"|"rw", "*": "ro"|"rw" }' });
           const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
           if (!oc.allowed) return json(res, 403, { error: oc.error });
           setPermission(email, wsName, filePath, { mode });
           savePermissions();
-          result = { success: true, result: `Mode set to ${mode}: ${wsName}:${filePath}` };
+          result = { success: true, result: `Mode set on ${wsName}:${filePath}` };
           break;
         }
 
@@ -651,14 +699,15 @@ async function handleRequest(req, res) {
       });
     }
 
-    // POST /api/fs/chmod — set read/write mode on a path
+    // POST /api/fs/chmod — set read/write mode on a path (string or per-key ACL object)
     if (pathname === '/api/fs/chmod' && method === 'POST') {
       let body;
       try { body = JSON.parse(await readBody(req)); }
       catch { return json(res, 400, { error: 'Invalid JSON body' }); }
       const { target, mode } = body;
       if (!target) return json(res, 400, { error: 'target is required' });
-      if (mode !== 'ro' && mode !== 'rw') return json(res, 400, { error: 'mode must be "ro" or "rw"' });
+      if (!isValidMode(mode))
+        return json(res, 400, { error: 'mode must be "ro", "rw", or an ACL object { "d2l_key": "ro"|"rw", "*": "ro"|"rw" }' });
       const parsed = parseTarget(target);
       if (parsed.error) return json(res, 400, { error: parsed.error });
       const { wsName, filePath } = parsed;
@@ -668,7 +717,9 @@ async function handleRequest(req, res) {
       if (!oc.allowed) return json(res, 403, { error: oc.error });
       setPermission(email, wsName, filePath, { mode });
       savePermissions();
-      return json(res, 200, { success: true, workspace: wsName, path: filePath, mode });
+      // Return the stored mode so callers can see the merged result
+      const stored = (fsPermissions[email] || {})[`${wsName}:${'/' + filePath.replace(/^\//, '')}`];
+      return json(res, 200, { success: true, workspace: wsName, path: filePath, mode: stored?.mode ?? 'rw' });
     }
 
     // POST /api/fs/chown — set or remove the owner API key for a path
