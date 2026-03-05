@@ -964,6 +964,72 @@
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+    /* ── POSIX features dropdown ─────────────────────────── */
+    .posix-details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin: 0 0 28px;
+      overflow: hidden;
+    }
+    .posix-details summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 11px 18px;
+      font-size: .82rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      user-select: none;
+      transition: color .15s;
+    }
+    .posix-details summary::-webkit-details-marker { display: none; }
+    .posix-details summary:hover { color: var(--text); }
+    .posix-details[open] summary { border-bottom: 1px solid var(--border); }
+    .posix-arrow { flex-shrink: 0; transition: transform .2s; }
+    .posix-details[open] .posix-arrow { transform: rotate(180deg); }
+    .posix-label { font-weight: 600; }
+    .posix-label-sub { color: var(--text-faint); font-weight: 400; }
+    .posix-feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .posix-feature {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+    }
+    .posix-feature:nth-child(2n) { border-right: none; }
+    .posix-feature:nth-last-child(-n+2) { border-bottom: none; }
+    .posix-fname {
+      font-size: .77rem;
+      font-weight: 600;
+      color: var(--accent-bright);
+      margin-bottom: 3px;
+    }
+    .posix-fdesc {
+      font-size: .76rem;
+      color: var(--text-dim);
+      line-height: 1.45;
+      margin-bottom: 5px;
+    }
+    .posix-fcode {
+      font-family: var(--font-mono);
+      font-size: .71rem;
+      color: var(--green);
+      background: var(--surface-2);
+      border-radius: 4px;
+      padding: 2px 7px;
+      display: inline-block;
+    }
+    @media (max-width: 600px) {
+      .posix-feature-grid { grid-template-columns: 1fr; }
+      .posix-feature { border-right: none; }
+      .posix-feature:nth-last-child(-n+2) { border-bottom: 1px solid var(--border); }
+      .posix-feature:last-child { border-bottom: none; }
+    }
   </style>
 </head>
 <body>
@@ -1099,6 +1165,62 @@ fetch(<span class="str">'https://data2l.ink/d2l/your_account_id/myapp'</span>)
     <section class="code-section" id="jjfs-examples">
       <h2 class="anim">File System API (JJFS)</h2>
       <p class="subtitle anim anim-d1">Store data as a virtual file tree — nested directories, POSIX paths, surgical in-place edits. Standard REST verbs on clean URLs.</p>
+      <details class="posix-details anim anim-d1">
+        <summary>
+          <svg class="posix-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="posix-label">POSIX filesystem features</span>
+          <span class="posix-label-sub">— octal modes, timestamps, symlinks, xattrs &amp; more</span>
+        </summary>
+        <div class="posix-feature-grid">
+          <div class="posix-feature">
+            <div class="posix-fname">Octal modes</div>
+            <div class="posix-fdesc">r/w/x per owner · group · other — inherits down the tree</div>
+            <span class="posix-fcode">chmod: '644'</span>
+          </div>
+          <div class="posix-feature">
+            <div class="posix-fname">Dotfiles</div>
+            <div class="posix-fdesc">Names starting with <code>.</code> are hidden from listings by default</div>
+            <span class="posix-fcode">?all=1</span> to include
+          </div>
+          <div class="posix-feature">
+            <div class="posix-fname">Timestamps</div>
+            <div class="posix-fdesc">birthtime / mtime / ctime tracked automatically on every write or metadata change</div>
+            <span class="posix-fcode">X-JJFS-Timestamps</span>
+          </div>
+          <div class="posix-feature">
+            <div class="posix-fname">Symlinks</div>
+            <div class="posix-fdesc">Soft link to any path in the same workspace; resolved transparently on read</div>
+            <span class="posix-fcode">{ symlink: '/target' }</span>
+          </div>
+          <div class="posix-feature">
+            <div class="posix-fname">Extended attrs</div>
+            <div class="posix-fdesc">Arbitrary key-value metadata on any path — <code>user.*</code> and <code>trusted.*</code> namespaces</div>
+            <span class="posix-fcode">xattr: { set: {'user.tag':'v'} }</span>
+          </div>
+          <div class="posix-feature">
+            <div class="posix-fname">Sticky bit</div>
+            <div class="posix-fdesc">Mode <code>1xxx</code> on a directory — only the file owner or dir owner may delete within</div>
+            <span class="posix-fcode">chmod: '1755'</span>
+          </div>
+          <div class="posix-feature">
+            <div class="posix-fname">SUID / SGID</div>
+            <div class="posix-fdesc">Advisory exec bits — stored and reported for external OS systems; not enforced here</div>
+            <span class="posix-fcode">'4755'</span> / <span class="posix-fcode">'2755'</span>
+          </div>
+          <div class="posix-feature">
+            <div class="posix-fname">Path normalization</div>
+            <div class="posix-fdesc"><code>.</code> and <code>..</code> resolved server-side — full POSIX path semantics</div>
+            <span class="posix-fcode">/a/../b</span> → <span class="posix-fcode">/b</span>
+          </div>
+          <div class="posix-feature">
+            <div class="posix-fname">Key hashing</div>
+            <div class="posix-fdesc">API keys SHA-256 hashed in all GET responses — hash your own key to match your entry</div>
+            <span class="posix-fcode">X-JJFS-Permission</span>
+          </div>
+        </div>
+      </details>
       <div class="code-grid anim anim-d2">
         <div class="code-card">
           <div class="code-card-header">
@@ -1116,7 +1238,14 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>
 <span class="comment">// curl</span>
 curl -X PUT https://data2l.ink/api/fs/default/notes/todo.md \
   -H <span class="str">'X-API-Key: d2l_your_key'</span> \
-  --data <span class="str">'# My Notes'</span></pre>
+  --data <span class="str">'# My Notes'</span>
+
+<span class="comment">// Dotfiles — names starting with "." are hidden from listings by default (?all=1 to show)</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/.gitignore'</span>, {
+  <span class="key">method</span>: <span class="str">'PUT'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> },
+  <span class="key">body</span>: <span class="str">'node_modules/\n.env'</span>
+})</pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
@@ -1131,7 +1260,17 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>
 .then(console.log)
 <span class="comment">// → "# My Notes\n- Item 1"</span>
 
-<span class="comment">// Optional: read lines 10–20 only  →  ?start=10&amp;end=20</span></pre>
+<span class="comment">// Optional: read lines 10–20 only  →  ?start=10&amp;end=20</span>
+
+<span class="comment">// List directory — dotfiles hidden unless ?all=1</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes?all=1'</span>, {
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
+})
+<span class="comment">// → { entries: [...], timestamps: { birthtime, mtime, ctime }, permission: {...} }</span>
+
+<span class="comment">// File responses carry POSIX metadata in response headers:</span>
+<span class="comment">// X-JJFS-Timestamps: {"birthtime":"2026-...","mtime":"2026-...","ctime":"2026-..."}</span>
+<span class="comment">// X-JJFS-Permission: {"mode":"644","owner":null}</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
@@ -1230,7 +1369,15 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
     <span class="key">chmod</span>: { <span class="str">'*'</span>: <span class="str">'4'</span>, <span class="str">'d2l_editor_key'</span>: <span class="str">'6'</span>, <span class="str">'d2l_admin_key'</span>: <span class="str">'7'</span> }
   })
 })
-<span class="comment">// → { permission: { mode: { "*": "4", "sha256(d2l_editor_key)": "6", ... }, owner: null } }</span></pre>
+<span class="comment">// → { permission: { mode: { "*": "4", "sha256(d2l_editor_key)": "6", ... }, owner: null } }</span>
+
+<span class="comment">// Sticky bit (mode "1xxx") on a directory — only the file or dir owner may delete within</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/shared'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'1755'</span> })  <span class="comment">// rwxr-xr-x + sticky</span>
+})
+<span class="comment">// SUID "4xxx" / SGID "2xxx" — stored and reported; advisory for external exec systems</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
@@ -1250,7 +1397,23 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   <span class="key">body</span>: JSON.stringify({ <span class="key">chown</span>: [<span class="str">'d2l_admin_key'</span>, <span class="str">'d2l_editor_key'</span>] })
 })
-<span class="comment">// Pass null to remove all owners</span></pre>
+<span class="comment">// Pass null to remove all owners</span>
+
+<span class="comment">// Extended attributes — arbitrary metadata per path (user.* or trusted.* namespace)</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">xattr</span>: { <span class="key">set</span>: { <span class="str">'user.tag'</span>: <span class="str">'draft'</span> }, <span class="key">remove</span>: [] } })
+})
+<span class="comment">// → { xattrs: { "user.tag": "draft" } }</span>
+
+<span class="comment">// Symbolic link — soft link to another path in the same workspace</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/latest.md'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">symlink</span>: <span class="str">'/notes/2026-03-05.md'</span> })
+})
+<span class="comment">// GET ?nofollow=1 to inspect the symlink itself instead of following it</span></pre>
         </div>
       </div>
     </section>
