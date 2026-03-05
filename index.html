@@ -1237,20 +1237,25 @@ fetch(<span class="str">'https://data2l.ink/api/fs/chmod'</span>, {
             <span class="method method-list">POST</span>
             <span class="endpoint">/api/fs/chown — set owner</span>
           </div>
-          <pre><span class="comment">// Assign which API key controls chmod/chown for a path</span>
-<span class="comment">// Only the current owner (or session) can reassign ownership</span>
+          <pre><span class="comment">// Single owner — only this key can call chmod/chown on the path</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/chown'</span>, {
   <span class="key">method</span>: <span class="str">'POST'</span>,
-  <span class="key">headers</span>: {
-    <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>,
-    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
-  },
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">target</span>: <span class="str">'default:/notes'</span>, <span class="key">owner</span>: <span class="str">'d2l_admin_key'</span> })
+})
+
+<span class="comment">// Multiple owners — any key in the array can chmod/chown the path</span>
+<span class="comment">// Only the current owner(s) or a session can reassign ownership</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/chown'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   <span class="key">body</span>: JSON.stringify({
-    <span class="key">target</span>: <span class="str">'default:/notes/todo.md'</span>,
-    <span class="key">owner</span>: <span class="str">'d2l_other_key'</span>  <span class="comment">// null to remove</span>
+    <span class="key">target</span>: <span class="str">'default:/notes'</span>,
+    <span class="key">owner</span>: [<span class="str">'d2l_admin_key'</span>, <span class="str">'d2l_editor_key'</span>, <span class="str">'d2l_bot_key'</span>]
   })
 })
-<span class="comment">// → { success: true, workspace: "default", path: "/notes/todo.md", owner: "d2l_other_key" }</span></pre>
+<span class="comment">// → { owner: ["d2l_admin_key", "d2l_editor_key", "d2l_bot_key"] }</span>
+<span class="comment">// Pass null to remove all owners (anyone can chmod/chown again)</span></pre>
         </div>
       </div>
     </section>
@@ -2472,10 +2477,12 @@ fetch(<span class="str">'https://data2l.ink/api/fs/chown'</span>, {
     {
       id: 'fs-chown', group: 'fs', label: 'Set owner', method: 'POST',
       params: [
-        { id: 'target', label: 'Target (workspace:/path)',       ph: 'default:/notes/todo.md' },
-        { id: 'owner',  label: 'Owner API key (empty to remove)', ph: 'd2l_...' },
+        { id: 'target', label: 'Target (workspace:/path)',                    ph: 'default:/notes/todo.md' },
+        { id: 'owner',  label: 'Owner key(s) — comma-separated, empty=none', ph: 'd2l_key1, d2l_key2' },
       ],
       code(p, k) {
+        const ownerVal = p.owner ? p.owner.split(',').map(s => s.trim()).filter(Boolean) : null;
+        const ownerDisplay = ownerVal ? (ownerVal.length === 1 ? JSON.stringify(ownerVal[0]) : JSON.stringify(ownerVal)) : 'null';
         return "fetch('https://data2l.ink/api/fs/chown', {\n" +
           "  method: 'POST',\n" +
           "  headers: {\n" +
@@ -2484,14 +2491,16 @@ fetch(<span class="str">'https://data2l.ink/api/fs/chown'</span>, {
           "  },\n" +
           "  body: JSON.stringify({\n" +
           "    target: " + JSON.stringify(p.target || 'default:/path') + ",\n" +
-          "    owner: " + (p.owner ? JSON.stringify(p.owner) : 'null') + "\n" +
+          "    owner: " + ownerDisplay + "\n" +
           "  })\n" +
           "})";
       },
       req(p, k) {
+        const ownerVal = p.owner ? p.owner.split(',').map(s => s.trim()).filter(Boolean) : null;
+        const owner = ownerVal ? (ownerVal.length === 1 ? ownerVal[0] : ownerVal) : null;
         return { url: '/api/fs/chown', method: 'POST',
           headers: { 'X-API-Key': k, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ target: p.target || '', owner: p.owner || null }) };
+          body: JSON.stringify({ target: p.target || '', owner }) };
       }
     },
   ];

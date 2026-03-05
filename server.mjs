@@ -203,14 +203,16 @@ function checkWriteAccess(email, wsName, filePath, apiKeyString) {
 
 // Returns { allowed: true } or { allowed: false, error }.
 // Checks ownership at the EXACT path only (not inherited). Anyone can modify a path
-// with no explicit owner; otherwise only the owner API key may.
+// with no explicit owner; otherwise only a key listed as owner may.
+// owner can be a single API key string or an array of strings.
 function checkOwnerAccess(email, wsName, filePath, apiKeyString) {
   if (!apiKeyString) return { allowed: true };
   const permsForEmail = fsPermissions[email] || {};
   const normalized = '/' + (filePath || '').replace(/^\//, '');
   const perm = permsForEmail[`${wsName}:${normalized}`];
   if (!perm || !perm.owner) return { allowed: true };
-  if (perm.owner === apiKeyString) return { allowed: true };
+  const owners = Array.isArray(perm.owner) ? perm.owner : [perm.owner];
+  if (owners.includes(apiKeyString)) return { allowed: true };
   return { allowed: false, error: 'Only the owner can modify permissions for this path' };
 }
 
@@ -614,9 +616,11 @@ async function handleRequest(req, res) {
           const oo = checkOwnerAccess(email, wsName, filePath, apiKeyString);
           if (!oo.allowed) return json(res, 403, { error: oo.error });
           const newOwner = content || null;
-          if (newOwner) {
-            const keyExists = (accounts[email]?.apiKeys || []).some(k => k.key === newOwner);
-            if (!keyExists) return json(res, 400, { error: 'owner must be a valid API key belonging to this account' });
+          if (newOwner !== null) {
+            const ownerKeys = Array.isArray(newOwner) ? newOwner : [newOwner];
+            const acctKeys = (accounts[email]?.apiKeys || []).map(k => k.key);
+            const invalid = ownerKeys.filter(k => !acctKeys.includes(k));
+            if (invalid.length > 0) return json(res, 400, { error: 'owner must be valid API key(s) belonging to this account' });
           }
           setPermission(email, wsName, filePath, { owner: newOwner });
           savePermissions();
@@ -722,7 +726,8 @@ async function handleRequest(req, res) {
       return json(res, 200, { success: true, workspace: wsName, path: filePath, mode: stored?.mode ?? 'rw' });
     }
 
-    // POST /api/fs/chown — set or remove the owner API key for a path
+    // POST /api/fs/chown — set or remove owner(s) for a path
+    // owner can be a string, an array of strings, or null to remove all owners
     if (pathname === '/api/fs/chown' && method === 'POST') {
       let body;
       try { body = JSON.parse(await readBody(req)); }
@@ -737,9 +742,11 @@ async function handleRequest(req, res) {
       const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
       if (!oc.allowed) return json(res, 403, { error: oc.error });
       const newOwner = owner || null;
-      if (newOwner) {
-        const keyExists = (accounts[email]?.apiKeys || []).some(k => k.key === newOwner);
-        if (!keyExists) return json(res, 400, { error: 'owner must be a valid API key belonging to this account' });
+      if (newOwner !== null) {
+        const ownerKeys = Array.isArray(newOwner) ? newOwner : [newOwner];
+        const acctKeys = (accounts[email]?.apiKeys || []).map(k => k.key);
+        const invalid = ownerKeys.filter(k => !acctKeys.includes(k));
+        if (invalid.length > 0) return json(res, 400, { error: 'owner must be valid API key(s) belonging to this account' });
       }
       setPermission(email, wsName, filePath, { owner: newOwner });
       savePermissions();
