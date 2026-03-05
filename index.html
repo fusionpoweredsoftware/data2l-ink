@@ -1207,23 +1207,30 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
             <span class="method method-patch">PATCH</span>
             <span class="endpoint">/api/fs/:workspace/*path — chmod</span>
           </div>
-          <pre><span class="comment">// String: one mode for all keys — applies to path and everything under it</span>
+          <pre><span class="comment">// POSIX octal — owner=rw (6), group=r (4), other=r (4)</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'644'</span> })  <span class="comment">// also: '600', '755', '1755' (sticky)</span>
+})
+
+<span class="comment">// Legacy strings still accepted</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
   <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'ro'</span> })
 })
 
-<span class="comment">// ACL object: per-key modes + "*" catch-all for everyone else</span>
+<span class="comment">// ACL object: per-key modes (octal digit or "ro"/"rw") + "*" catch-all</span>
 <span class="comment">// Entries are merged in; set a key to null to remove its override</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
   <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   <span class="key">body</span>: JSON.stringify({
-    <span class="key">chmod</span>: { <span class="str">'*'</span>: <span class="str">'ro'</span>, <span class="str">'d2l_editor_key'</span>: <span class="str">'rw'</span>, <span class="str">'d2l_admin_key'</span>: <span class="str">'rw'</span> }
+    <span class="key">chmod</span>: { <span class="str">'*'</span>: <span class="str">'4'</span>, <span class="str">'d2l_editor_key'</span>: <span class="str">'6'</span>, <span class="str">'d2l_admin_key'</span>: <span class="str">'7'</span> }
   })
 })
-<span class="comment">// → { mode: { "*": "ro", "d2l_editor_key": "rw", "d2l_admin_key": "rw" } }</span></pre>
+<span class="comment">// → { permission: { mode: { "*": "4", "sha256(d2l_editor_key)": "6", ... }, owner: null } }</span></pre>
         </div>
         <div class="code-card">
           <div class="code-card-header">
@@ -2440,7 +2447,7 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
       params: [
         { id: 'workspace', label: 'Workspace',                     ph: 'default' },
         { id: 'path',      label: 'Path',                          ph: 'notes/todo.md' },
-        { id: 'mode',      label: 'Mode — string or ACL object',   ph: 'ro  or  {"*":"ro","d2l_key":"rw"}' },
+        { id: 'mode',      label: 'Mode — octal, string, or ACL',   ph: '644  or  ro  or  {"*":"4","d2l_key":"6"}' },
       ],
       code(p, k) {
         const ws = p.workspace || 'default', path = p.path || 'file.txt';
