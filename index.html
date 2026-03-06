@@ -965,13 +965,18 @@
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
 
-    /* ── Inline feature accordions (above related code cards) ── */
+    /* ── Inline feature accordions (above code grid) ── */
+    .feat-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
     .feat-details {
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: 10px;
-      overflow: hidden;
-      align-self: end;
+      position: relative;
     }
     .feat-details summary {
       list-style: none;
@@ -992,6 +997,18 @@
     .feat-details[open] .feat-arrow { transform: rotate(180deg); }
     .feat-name { font-weight: 600; color: var(--accent-bright); }
     .feat-desc { color: var(--text-faint); }
+    .feat-body {
+      position: absolute;
+      top: 100%;
+      left: -1px;
+      right: -1px;
+      z-index: 30;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
     .feat-body pre {
       margin: 0;
       padding: 13px 15px;
@@ -1139,7 +1156,7 @@ fetch(<span class="str">'https://data2l.ink/d2l/your_account_id/myapp'</span>)
     <section class="code-section" id="jjfs-examples">
       <h2 class="anim">File System API (JJFS)</h2>
       <p class="subtitle anim anim-d1">Store data as a virtual file tree — nested directories, POSIX paths, surgical in-place edits. Standard REST verbs on clean URLs.</p>
-      <div class="code-grid anim anim-d2">
+      <div class="feat-row anim anim-d1">
         <details class="feat-details">
           <summary>
             <svg class="feat-arrow" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1176,6 +1193,45 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>
   <span class="comment">// Directory listings also include: { timestamps: {...}, permission: {...} }</span>
 })</pre></div>
         </details>
+        <details class="feat-details">
+          <summary>
+            <svg class="feat-arrow" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="feat-name">Octal modes &amp; sticky bit</span>
+            <span class="feat-desc"> — r/w/x per owner·group·other; prefix <code>1xxx</code> for sticky, <code>4xxx</code> SUID, <code>2xxx</code> SGID</span>
+          </summary>
+          <div class="feat-body"><pre><span class="comment">// Sticky bit (1xxx) on a directory — only the file or dir owner may delete within</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/shared'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'1755'</span> })  <span class="comment">// rwxr-xr-x + sticky</span>
+})
+
+<span class="comment">// SUID "4xxx" / SGID "2xxx" — stored and reported; advisory for external exec systems</span>
+<span class="comment">// Path normalization: /a/../b is resolved to /b server-side before any operation</span></pre></div>
+        </details>
+        <details class="feat-details">
+          <summary>
+            <svg class="feat-arrow" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="feat-name">Symlinks &amp; extended attrs</span>
+            <span class="feat-desc"> — soft links resolved transparently; arbitrary key-value metadata on any path</span>
+          </summary>
+          <div class="feat-body"><pre><span class="comment">// Symbolic link — resolved transparently on GET; ?nofollow=1 to inspect the link itself</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/latest.md'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">symlink</span>: <span class="str">'/notes/2026-03-05.md'</span> })
+})
+
+<span class="comment">// Extended attributes — user.* or trusted.* namespace</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">xattr</span>: { <span class="key">set</span>: { <span class="str">'user.tag'</span>: <span class="str">'draft'</span> }, <span class="key">remove</span>: [] } })
+})
+<span class="comment">// → { xattrs: { "user.tag": "draft" } }</span></pre></div>
+        </details>
+      </div>
+      <div class="code-grid anim anim-d2">
         <div class="code-card">
           <div class="code-card-header">
             <span class="method method-put">PUT</span>
@@ -1277,43 +1333,6 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/template.md'</span>, 
 })
 <span class="comment">// → { success: true, result: "Created: default:/notes/new.md" }</span></pre>
         </div>
-        <details class="feat-details">
-          <summary>
-            <svg class="feat-arrow" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="feat-name">Octal modes &amp; sticky bit</span>
-            <span class="feat-desc"> — r/w/x per owner·group·other; prefix <code>1xxx</code> for sticky, <code>4xxx</code> SUID, <code>2xxx</code> SGID</span>
-          </summary>
-          <div class="feat-body"><pre><span class="comment">// Sticky bit (1xxx) on a directory — only the file or dir owner may delete within</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/default/shared'</span>, {
-  <span class="key">method</span>: <span class="str">'PATCH'</span>,
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'1755'</span> })  <span class="comment">// rwxr-xr-x + sticky</span>
-})
-
-<span class="comment">// SUID "4xxx" / SGID "2xxx" — stored and reported; advisory for external exec systems</span>
-<span class="comment">// Path normalization: /a/../b is resolved to /b server-side before any operation</span></pre></div>
-        </details>
-        <details class="feat-details">
-          <summary>
-            <svg class="feat-arrow" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="feat-name">Symlinks &amp; extended attrs</span>
-            <span class="feat-desc"> — soft links resolved transparently; arbitrary key-value metadata on any path</span>
-          </summary>
-          <div class="feat-body"><pre><span class="comment">// Symbolic link — resolved transparently on GET; ?nofollow=1 to inspect the link itself</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/latest.md'</span>, {
-  <span class="key">method</span>: <span class="str">'PATCH'</span>,
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">symlink</span>: <span class="str">'/notes/2026-03-05.md'</span> })
-})
-
-<span class="comment">// Extended attributes — user.* or trusted.* namespace</span>
-fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
-  <span class="key">method</span>: <span class="str">'PATCH'</span>,
-  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">xattr</span>: { <span class="key">set</span>: { <span class="str">'user.tag'</span>: <span class="str">'draft'</span> }, <span class="key">remove</span>: [] } })
-})
-<span class="comment">// → { xattrs: { "user.tag": "draft" } }</span></pre></div>
-        </details>
         <div class="code-card">
           <div class="code-card-header">
             <span class="method method-patch">PATCH</span>
