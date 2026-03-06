@@ -965,62 +965,54 @@
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
 
-    /* ── Inline feature accordions (above code grid) ── */
-    .feat-row {
+    /* ── POSIX feature tiles + code panel ── */
+    .feat-tile-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 16px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
     }
-    .feat-details {
+    .feat-tile {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      user-select: none;
+    }
+    .feat-tile:hover { border-color: var(--border-bright); }
+    .feat-tile.active { border-color: var(--accent); background: var(--surface-3, rgba(108,92,231,.08)); }
+    .feat-tile-name { font-weight: 600; font-size: .81rem; color: var(--accent-bright); margin-bottom: 3px; }
+    .feat-tile-desc { font-size: .73rem; color: var(--text-faint); line-height: 1.35; }
+    .feat-tile-hint { font-size: .71rem; font-family: var(--font-mono); color: var(--green); margin-top: 4px; display: inline-block; }
+    .feat-panel-wrap {
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: 10px;
-      position: relative;
+      overflow: hidden;
+      margin-bottom: 16px;
+      min-height: 52px;
     }
-    .feat-details summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 10px 15px;
-      font-size: .79rem;
-      color: var(--text-dim);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      user-select: none;
-      transition: color .15s;
+    .feat-placeholder {
+      padding: 16px 18px;
+      font-size: .78rem;
+      color: var(--text-faint);
+      text-align: center;
     }
-    .feat-details summary::-webkit-details-marker { display: none; }
-    .feat-details summary:hover { color: var(--text); }
-    .feat-details[open] summary { border-bottom: 1px solid var(--border); }
-    .feat-arrow { flex-shrink: 0; transition: transform .2s; }
-    .feat-details[open] .feat-arrow { transform: rotate(180deg); }
-    .feat-name { font-weight: 600; color: var(--accent-bright); }
-    .feat-desc { color: var(--text-faint); }
-    .feat-body {
-      position: absolute;
-      top: 100%;
-      left: -1px;
-      right: -1px;
-      z-index: 30;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-top: none;
-      border-radius: 0 0 10px 10px;
-      box-shadow: 0 8px 24px rgba(0,0,0,.4);
-    }
-    .feat-body pre {
+    .feat-panel { display: none; }
+    .feat-panel pre {
       margin: 0;
-      padding: 13px 15px;
+      padding: 13px 18px;
       font-size: .74rem;
       font-family: var(--font-mono);
       line-height: 1.65;
       overflow-x: auto;
       color: var(--text-dim);
     }
-    .feat-body pre .key   { color: var(--accent-bright); }
-    .feat-body pre .str   { color: var(--green); }
-    .feat-body pre .comment { color: var(--text-faint); }
+    .feat-panel pre .key     { color: var(--accent-bright); }
+    .feat-panel pre .str     { color: var(--green); }
+    .feat-panel pre .comment { color: var(--text-faint); }
   </style>
 </head>
 <body>
@@ -1156,80 +1148,144 @@ fetch(<span class="str">'https://data2l.ink/d2l/your_account_id/myapp'</span>)
     <section class="code-section" id="jjfs-examples">
       <h2 class="anim">File System API (JJFS)</h2>
       <p class="subtitle anim anim-d1">Store data as a virtual file tree — nested directories, POSIX paths, surgical in-place edits. Standard REST verbs on clean URLs.</p>
-      <div class="feat-row anim anim-d1">
-        <details class="feat-details">
-          <summary>
-            <svg class="feat-arrow" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="feat-name">Dotfiles</span>
-            <span class="feat-desc"> — names starting with <code>.</code> are hidden from listings by default; <code>?all=1</code> to include</span>
-          </summary>
-          <div class="feat-body"><pre><span class="comment">// Write a dotfile (hidden from directory listings by default)</span>
+      <div class="feat-tile-grid anim anim-d1">
+        <div class="feat-tile" data-feat="dotfiles">
+          <div class="feat-tile-name">Dotfiles</div>
+          <div class="feat-tile-desc">Names starting with <code>.</code> hidden from directory listings by default</div>
+          <code class="feat-tile-hint">?all=1</code> to include
+        </div>
+        <div class="feat-tile" data-feat="timestamps">
+          <div class="feat-tile-name">Timestamps</div>
+          <div class="feat-tile-desc">birthtime / mtime / ctime tracked on every write or metadata change</div>
+          <code class="feat-tile-hint">X-JJFS-Timestamps</code>
+        </div>
+        <div class="feat-tile" data-feat="octal">
+          <div class="feat-tile-name">Octal modes</div>
+          <div class="feat-tile-desc">r/w/x per owner · group · other — inherits down the tree</div>
+          <code class="feat-tile-hint">chmod: '644'</code>
+        </div>
+        <div class="feat-tile" data-feat="sticky">
+          <div class="feat-tile-name">Sticky bit</div>
+          <div class="feat-tile-desc">Mode <code>1xxx</code> on a dir — only file owner or dir owner may delete within</div>
+          <code class="feat-tile-hint">chmod: '1755'</code>
+        </div>
+        <div class="feat-tile" data-feat="suid">
+          <div class="feat-tile-name">SUID / SGID</div>
+          <div class="feat-tile-desc">Advisory exec bits — stored and reported for external OS systems</div>
+          <code class="feat-tile-hint">'4755'</code> / <code class="feat-tile-hint">'2755'</code>
+        </div>
+        <div class="feat-tile" data-feat="symlinks">
+          <div class="feat-tile-name">Symlinks</div>
+          <div class="feat-tile-desc">Soft link to any path; resolved transparently on read, max 8 hops</div>
+          <code class="feat-tile-hint">{ symlink: '/target' }</code>
+        </div>
+        <div class="feat-tile" data-feat="xattrs">
+          <div class="feat-tile-name">Extended attrs</div>
+          <div class="feat-tile-desc">Arbitrary key-value metadata on any path — <code>user.*</code> and <code>trusted.*</code></div>
+          <code class="feat-tile-hint">xattr: { set: {...} }</code>
+        </div>
+        <div class="feat-tile" data-feat="normalize">
+          <div class="feat-tile-name">Path normalization</div>
+          <div class="feat-tile-desc"><code>.</code> and <code>..</code> resolved server-side — full POSIX path semantics</div>
+          <code class="feat-tile-hint">/a/../b</code> → <code class="feat-tile-hint">/b</code>
+        </div>
+        <div class="feat-tile" data-feat="keyhash">
+          <div class="feat-tile-name">Key hashing</div>
+          <div class="feat-tile-desc">API keys SHA-256 hashed in all GET responses — hash your own to match</div>
+          <code class="feat-tile-hint">X-JJFS-Permission</code>
+        </div>
+      </div>
+      <div class="feat-panel-wrap anim anim-d1">
+        <div class="feat-placeholder">↑ click a feature to see a code example</div>
+        <div id="fp-dotfiles" class="feat-panel" hidden><pre><span class="comment">// Write a dotfile — name starts with "." so it's hidden from listings by default</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/.gitignore'</span>, {
   <span class="key">method</span>: <span class="str">'PUT'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> },
   <span class="key">body</span>: <span class="str">'node_modules/\n.env'</span>
 })
 
-<span class="comment">// List including hidden entries</span>
+<span class="comment">// List directory including hidden entries</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/?all=1'</span>, {
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
 }).then(<span class="key">r</span> => r.json()).then(console.log)
 <span class="comment">// → { entries: ['.gitignore', 'notes', ...] }</span></pre></div>
-        </details>
-        <details class="feat-details">
-          <summary>
-            <svg class="feat-arrow" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="feat-name">Timestamps &amp; permissions</span>
-            <span class="feat-desc"> — birthtime/mtime/ctime tracked automatically; returned in response headers</span>
-          </summary>
-          <div class="feat-body"><pre><span class="comment">// File responses carry POSIX metadata headers</span>
-<span class="comment">// X-JJFS-Timestamps: {"birthtime":"2026-...","mtime":"2026-...","ctime":"2026-..."}</span>
-<span class="comment">// X-JJFS-Permission: {"mode":"644","owner":"sha256(your_key)"}</span>
+        <div id="fp-timestamps" class="feat-panel" hidden><pre><span class="comment">// File responses include timestamps and permission in headers</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
 }).then(<span class="key">r</span> => {
   console.log(r.headers.get(<span class="str">'X-JJFS-Timestamps'</span>))
+  <span class="comment">// → {"birthtime":"2026-03-01T...","mtime":"2026-03-05T...","ctime":"2026-03-05T..."}</span>
   console.log(r.headers.get(<span class="str">'X-JJFS-Permission'</span>))
-  <span class="comment">// Directory listings also include: { timestamps: {...}, permission: {...} }</span>
+  <span class="comment">// → {"mode":"644","owner":"sha256(your_key)"}</span>
+  <span class="comment">// Directory listings also include: { timestamps: {...}, permission: {...} } in the JSON body</span>
 })</pre></div>
-        </details>
-        <details class="feat-details">
-          <summary>
-            <svg class="feat-arrow" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="feat-name">Octal modes &amp; sticky bit</span>
-            <span class="feat-desc"> — r/w/x per owner·group·other; prefix <code>1xxx</code> for sticky, <code>4xxx</code> SUID, <code>2xxx</code> SGID</span>
-          </summary>
-          <div class="feat-body"><pre><span class="comment">// Sticky bit (1xxx) on a directory — only the file or dir owner may delete within</span>
+        <div id="fp-octal" class="feat-panel" hidden><pre><span class="comment">// Set POSIX octal mode: owner=rw(6), group=r(4), other=r(4)</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'644'</span> })
+})
+
+<span class="comment">// Per-key ACL: "*" is catch-all; each value is octal digit (4=r, 6=rw, 7=rwx)</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: { <span class="str">'*'</span>: <span class="str">'4'</span>, <span class="str">'d2l_editor_key'</span>: <span class="str">'6'</span> } })
+})</pre></div>
+        <div id="fp-sticky" class="feat-panel" hidden><pre><span class="comment">// Sticky bit (1xxx) on a directory — only the file or dir owner may delete files within</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/shared'</span>, {
   <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'1755'</span> })  <span class="comment">// rwxr-xr-x + sticky</span>
 })
-
-<span class="comment">// SUID "4xxx" / SGID "2xxx" — stored and reported; advisory for external exec systems</span>
-<span class="comment">// Path normalization: /a/../b is resolved to /b server-side before any operation</span></pre></div>
-        </details>
-        <details class="feat-details">
-          <summary>
-            <svg class="feat-arrow" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="feat-name">Symlinks &amp; extended attrs</span>
-            <span class="feat-desc"> — soft links resolved transparently; arbitrary key-value metadata on any path</span>
-          </summary>
-          <div class="feat-body"><pre><span class="comment">// Symbolic link — resolved transparently on GET; ?nofollow=1 to inspect the link itself</span>
+<span class="comment">// → { permission: { mode: "1755", owner: null } }</span>
+<span class="comment">// Now only the uploader of each file (or the dir owner) can delete it</span></pre></div>
+        <div id="fp-suid" class="feat-panel" hidden><pre><span class="comment">// SUID (4xxx) and SGID (2xxx) — advisory bits, stored and reported for external systems</span>
+<span class="comment">// data2l.ink does not enforce execution; these signal intent to external OS tooling</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/bin/run.sh'</span>, {
+  <span class="key">method</span>: <span class="str">'PATCH'</span>,
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({ <span class="key">chmod</span>: <span class="str">'4755'</span> })  <span class="comment">// SUID + rwxr-xr-x</span>
+})
+<span class="comment">// → { permission: { mode: "4755", owner: null } }</span></pre></div>
+        <div id="fp-symlinks" class="feat-panel" hidden><pre><span class="comment">// Create a symlink — resolved transparently on GET (up to 8 hops, circular-safe)</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/latest.md'</span>, {
   <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   <span class="key">body</span>: JSON.stringify({ <span class="key">symlink</span>: <span class="str">'/notes/2026-03-05.md'</span> })
 })
 
-<span class="comment">// Extended attributes — user.* or trusted.* namespace</span>
+<span class="comment">// Inspect the link itself without following it</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/latest.md?nofollow=1'</span>, {
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
+}).then(<span class="key">r</span> => r.json())
+<span class="comment">// → { symlink: '/notes/2026-03-05.md' }</span></pre></div>
+        <div id="fp-xattrs" class="feat-panel" hidden><pre><span class="comment">// Set extended attributes — user.* or trusted.* namespace</span>
 fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>, {
   <span class="key">method</span>: <span class="str">'PATCH'</span>,
   <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span>, <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="key">body</span>: JSON.stringify({ <span class="key">xattr</span>: { <span class="key">set</span>: { <span class="str">'user.tag'</span>: <span class="str">'draft'</span> }, <span class="key">remove</span>: [] } })
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">xattr</span>: { <span class="key">set</span>: { <span class="str">'user.tag'</span>: <span class="str">'draft'</span>, <span class="str">'user.version'</span>: <span class="str">'2'</span> }, <span class="key">remove</span>: [] }
+  })
 })
-<span class="comment">// → { xattrs: { "user.tag": "draft" } }</span></pre></div>
-        </details>
+<span class="comment">// → { xattrs: { "user.tag": "draft", "user.version": "2" } }</span></pre></div>
+        <div id="fp-normalize" class="feat-panel" hidden><pre><span class="comment">// Paths with . or .. are normalized server-side before any operation</span>
+<span class="comment">// /notes/../archive/todo.md  →  /archive/todo.md</span>
+<span class="comment">// /notes/./sub/file.txt      →  /notes/sub/file.txt</span>
+
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/../archive/report.md'</span>, {
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
+})
+<span class="comment">// same as fetching /api/fs/default/archive/report.md</span></pre></div>
+        <div id="fp-keyhash" class="feat-panel" hidden><pre><span class="comment">// API keys are SHA-256 hashed in all GET responses — never exposed raw</span>
+fetch(<span class="str">'https://data2l.ink/api/fs/default/notes'</span>, {
+  <span class="key">headers</span>: { <span class="str">'X-API-Key'</span>: <span class="str">'d2l_your_key'</span> }
+}).then(<span class="key">r</span> => r.json()).then(<span class="key">data</span> => {
+  console.log(data.permission)
+  <span class="comment">// → { mode: "644", owner: "e3b0c44...sha256(your_key)..." }</span>
+  <span class="comment">// Hash your own key locally to see if you're the owner:</span>
+  <span class="comment">// crypto.subtle.digest('SHA-256', new TextEncoder().encode('d2l_your_key'))</span>
+})</pre></div>
       </div>
       <div class="code-grid anim anim-d2">
         <div class="code-card">
@@ -1650,6 +1706,18 @@ fetch(<span class="str">'https://data2l.ink/api/fs/default/notes/todo.md'</span>
 
 <script src="random-name-gen.js"></script>
 <script>
+  // ── POSIX feature tile switcher ───────────────────────────────
+  document.querySelectorAll('.feat-tile').forEach(tile => {
+    tile.addEventListener('click', () => {
+      document.querySelectorAll('.feat-tile').forEach(t => t.classList.remove('active'));
+      tile.classList.add('active');
+      document.querySelectorAll('.feat-panel').forEach(p => { p.hidden = true; });
+      document.querySelector('.feat-placeholder').hidden = true;
+      const panel = document.getElementById('fp-' + tile.dataset.feat);
+      if (panel) panel.hidden = false;
+    });
+  });
+
   // ── State ─────────────────────────────────────────────────────
   let session = localStorage.getItem('d2l_session') || null;
   let userEmail = localStorage.getItem('d2l_email') || null;
