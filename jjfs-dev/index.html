@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>jjfs.js — JavaScript Journaling File System</title>
+  <title>jjfs.dev — JavaScript Journaling File System</title>
   <meta name="description" content="A zero-dependency JavaScript library that gives AI models and apps a persistent virtual file system backed by plain JSON. Works in any browser or Node.js project." />
   <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -68,9 +68,10 @@
       display: flex; align-items: center; justify-content: space-between;
       height: 60px;
     }
-    .logo { font-size: 1.25rem; font-weight: 800; letter-spacing: -.5px; }
+    .logo { display: flex; align-items: center; gap: .5rem; font-size: 1.25rem; font-weight: 800; letter-spacing: -.5px; }
     .logo span.jj { color: var(--cyan); }
     .logo span.js-ext { color: var(--orange); }
+    .logo-svg { width: 36px; height: 36px; flex-shrink: 0; }
     .nav-links { display: flex; align-items: center; gap: 2rem; }
     .nav-links a { color: var(--slate-300); font-size: .9rem; font-weight: 500; transition: color .15s; }
     .nav-links a:hover { color: var(--cyan); text-decoration: none; }
@@ -80,7 +81,7 @@
       font-size: .875rem; font-weight: 600; cursor: pointer;
       transition: all .15s; border: none; text-decoration: none;
     }
-    .btn-primary { background: var(--cyan); color: var(--slate-900); }
+    .btn-primary { background: var(--cyan); color: var(--white); }
     .btn-primary:hover { background: var(--cyan-dim); text-decoration: none; }
     .btn-outline { background: transparent; border: 1.5px solid var(--slate-600); color: var(--slate-200); }
     .btn-outline:hover { border-color: var(--cyan); color: var(--cyan); text-decoration: none; }
@@ -374,7 +375,26 @@
 <nav>
   <div class="container nav-inner">
     <a href="#" class="logo" style="text-decoration:none;">
-      <span class="jj">jjfs</span><span class="js-ext">.js</span>
+      <svg class="logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#00E5FF"/>
+            <stop offset="100%" stop-color="#6C63FF"/>
+          </linearGradient>
+        </defs>
+        <circle cx="256" cy="256" r="200" fill="black"/>
+        <circle cx="256" cy="256" r="210" stroke="url(#g)" stroke-width="18" fill="none"/>
+        <path d="M256 256 m-120 0 a120 120 0 1 1 240 0 a90 90 0 1 0 -180 0 a60 60 0 1 1 120 0 a30 30 0 1 0 -60 0" stroke="url(#g)" stroke-width="12" stroke-linecap="round" fill="none"/>
+        <g stroke="white" stroke-width="6" opacity="0.9">
+          <line x1="256" y1="36" x2="256" y2="70"/>
+          <line x1="256" y1="442" x2="256" y2="476"/>
+          <line x1="36" y1="256" x2="70" y2="256"/>
+          <line x1="442" y1="256" x2="476" y2="256"/>
+        </g>
+        <circle cx="256" cy="256" r="10" fill="white"/>
+        <text x="256" y="355" text-anchor="middle" font-family="monospace" font-size="96" letter-spacing="10" fill="white">JJFS</text>
+      </svg>
+      <span class="jj">jjfs</span><span class="js-ext">.dev</span>
     </a>
     <div class="nav-links">
       <a href="#get-started">Get Started</a>
@@ -1413,9 +1433,9 @@ RULES
 <footer>
   <div class="container">
     <p style="font-size:1rem; margin-bottom:1rem;">
-      <span style="color:var(--cyan); font-weight:800;">jjfs</span><span style="color:var(--orange); font-weight:800;">.js</span>
+      <span style="color:var(--cyan); font-weight:800;">jjfs</span><span style="color:var(--orange); font-weight:800;">.dev</span>
     </p>
-    <p>jjfs.js is released into the public domain. Use it, fork it, adapt it, ship products with it. No attribution required.</p>
+    <p>jjfs.dev is released into the public domain. Use it, fork it, adapt it, ship products with it. No attribution required.</p>
     <div class="footer-links" style="margin-top:1.25rem;">
       <a href="https://github.com/fusionpoweredsoftware/data2l-ink" target="_blank" rel="noopener">GitHub</a>
       <a href="https://data2l.ink" target="_blank" rel="noopener">data2l.ink</a>
