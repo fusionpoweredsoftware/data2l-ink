@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { jjfsNavigate, parseTarget, countFiles, jjfsRead, jjfsWrite, jjfsEdit, jjfsDelete, jjfsMove, jjfsCopy } from './jjfs.js';
+import { jjfsNavigate, parseTarget, countFiles, jjfsRead, jjfsWrite, jjfsEdit, jjfsDelete, jjfsMove, jjfsCopy, normalizePath, isValidMode, parseOctalBits, getStickyBit, getEffectivePermission, getPermBitsForKey, checkWriteAccess, checkReadAccess, checkOwnerAccess, checkStickyBit, setPermission, removePermissionsUnder, jjfsChmod, jjfsChown } from './jjfs.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -91,15 +91,6 @@ function hashKey(k) {
 
 // Normalise a POSIX path: resolve `.` and `..`, collapse multiple slashes.
 // Result always starts with `/`. Does not validate existence.
-function normalizePath(p) {
-  const parts = [];
-  for (const seg of (p || '').replace(/^\//, '').split('/')) {
-    if (!seg || seg === '.') continue;
-    if (seg === '..') parts.pop();
-    else parts.push(seg);
-  }
-  return '/' + parts.join('/');
-}
 
 function json(res, status, data) {
   res.writeHead(status, {
@@ -187,57 +178,8 @@ function provisionAccount(email) {
 }
 
 // ── JJFS File Permissions ─────────────────────────────────────────────
-// Returns the most specific applicable permission entry for a path (searching from the
-// given path up to the workspace root), or null if none found.
-function getEffectivePermission(email, wsName, filePath) {
-  const permsForEmail = fsPermissions[email] || {};
-  const normalized = normalizePath(filePath);
-  const parts = normalized.replace(/^\//, '').split('/').filter(Boolean);
-  // Build list from most specific path to root: ['/a/b/c', '/a/b', '/a', '/']
-  const pathsToCheck = [];
-  let current = '';
-  for (const part of parts) { current += '/' + part; pathsToCheck.push(current); }
-  pathsToCheck.reverse();
-  pathsToCheck.push('/');
-  for (const p of pathsToCheck) {
-    const key = `${wsName}:${p}`;
-    if (permsForEmail[key]) return { ...permsForEmail[key], effectivePath: p, inherited: p !== normalized };
-  }
-  return null;
-}
-
-// Decode the read/write/execute bits for a specific API key from a permission entry.
-// mode can be: "ro", "rw", 3-digit octal "644", 4-digit octal "1755", or ACL object.
-function parseOctalBits(digit) {
-  const n = parseInt(digit, 8);
-  return { read: !!(n & 4), write: !!(n & 2), execute: !!(n & 1) };
-}
-
-function getPermBitsForKey(perm, apiKeyString) {
-  const m = perm?.mode;
-  if (!m) return { read: true, write: true, execute: false };
-  // Backward-compat string modes
-  if (m === 'ro') return { read: true, write: false, execute: false };
-  if (m === 'rw') return { read: true, write: true, execute: false };
-  // ACL object { "*": "ro"|"rw"|octal-digit, "d2l_key": ... }
-  if (typeof m === 'object') {
-    const val = m[apiKeyString] ?? m['*'];
-    if (val === null || val === undefined) return { read: true, write: true, execute: false };
-    if (val === 'ro') return { read: true, write: false, execute: false };
-    if (val === 'rw') return { read: true, write: true, execute: false };
-    return parseOctalBits(String(val));
-  }
-  // 3-digit octal "644" or 4-digit "1755": digit 0 of 3-digit = user, digit 2 = other
-  // For 4-digit: digit 0 = special bits, digit 1 = user, digit 3 = other
-  if (/^[0-7]{3,4}$/.test(m)) {
-    const owners = perm?.owner ? (Array.isArray(perm.owner) ? perm.owner : [perm.owner]) : [];
-    const isOwner = apiKeyString && owners.includes(apiKeyString);
-    const userDigit  = m.length === 4 ? m[1] : m[0];
-    const otherDigit = m.length === 4 ? m[3] : m[2];
-    return parseOctalBits(isOwner ? userDigit : otherDigit);
-  }
-  return { read: true, write: true, execute: false };
-}
+// Permission helpers (normalizePath, isValidMode, getEffectivePermission, etc.)
+// are imported from jjfs.js. They accept fsPermissions as their first parameter.
 
 // Convert a stored permission entry into a response-safe version — raw API keys
 // are replaced with SHA-256 hashes so external callers can never recover raw keys
@@ -262,130 +204,6 @@ function hashPermForResponse(perm) {
   if (perm.effectivePath !== undefined) out.effectivePath = perm.effectivePath;
   if (perm.inherited !== undefined) out.inherited = perm.inherited;
   return out;
-}
-
-// Validate a mode value:
-//   - "ro" | "rw" (backward-compat strings)
-//   - 3-digit octal string: "644", "755", "600", "000"
-//   - 4-digit octal string: "0644", "1755", "4755", "2755"
-//   - ACL object { key: "ro"|"rw"|null|"[0-7]", ... }
-function isValidMode(mode) {
-  if (mode === 'ro' || mode === 'rw') return true;
-  if (typeof mode === 'string' && /^[0-7]{3,4}$/.test(mode)) return true;
-  if (typeof mode === 'object' && mode !== null && !Array.isArray(mode))
-    return Object.values(mode).every(v =>
-      v === 'ro' || v === 'rw' || v === null || (typeof v === 'string' && /^[0-7]$/.test(v)));
-  return false;
-}
-
-// Returns { allowed: true } or { allowed: false, error }.
-// Session auth (apiKeyString = null) always passes.
-function checkWriteAccess(email, wsName, filePath, apiKeyString) {
-  if (!apiKeyString) return { allowed: true };
-  const perm = getEffectivePermission(email, wsName, filePath);
-  const bits = getPermBitsForKey(perm, apiKeyString);
-  if (bits.write) return { allowed: true };
-  const loc = perm?.inherited ? ` (inherited from ${wsName}:${perm.effectivePath})` : '';
-  return { allowed: false, error: `Permission denied (no write): ${wsName}:${filePath}${loc}` };
-}
-
-// Returns { allowed: true } or { allowed: false, error }.
-function checkReadAccess(email, wsName, filePath, apiKeyString) {
-  if (!apiKeyString) return { allowed: true };
-  const perm = getEffectivePermission(email, wsName, filePath);
-  const bits = getPermBitsForKey(perm, apiKeyString);
-  if (bits.read) return { allowed: true };
-  const loc = perm?.inherited ? ` (inherited from ${wsName}:${perm.effectivePath})` : '';
-  return { allowed: false, error: `Permission denied (no read): ${wsName}:${filePath}${loc}` };
-}
-
-// Returns { allowed: true } or { allowed: false, error }.
-// Checks ownership at the EXACT path only (not inherited). Anyone can modify a path
-// with no explicit owner; otherwise only a key listed as owner may.
-function checkOwnerAccess(email, wsName, filePath, apiKeyString) {
-  if (!apiKeyString) return { allowed: true };
-  const permsForEmail = fsPermissions[email] || {};
-  const normalized = normalizePath(filePath);
-  const perm = permsForEmail[`${wsName}:${normalized}`];
-  if (!perm || !perm.owner) return { allowed: true };
-  const owners = Array.isArray(perm.owner) ? perm.owner : [perm.owner];
-  if (owners.includes(apiKeyString)) return { allowed: true };
-  return { allowed: false, error: 'Only the owner can modify permissions for this path' };
-}
-
-// Sticky bit: when a directory has the sticky bit set (high bit `1xxx`), only the
-// file owner or directory owner may delete/rename files within it.
-function getStickyBit(mode) {
-  if (!mode || typeof mode !== 'string') return false;
-  if (/^[0-7]{4}$/.test(mode)) return !!(parseInt(mode[0], 8) & 1);
-  return false;
-}
-
-function checkStickyBit(email, wsName, filePath, apiKeyString) {
-  if (!apiKeyString) return { allowed: true };
-  const parentPath = normalizePath(filePath + '/..');
-  const parentKey = `${wsName}:${parentPath}`;
-  const dirPerm = (fsPermissions[email] || {})[parentKey];
-  if (!dirPerm || !getStickyBit(dirPerm.mode)) return { allowed: true };
-  // Requester must own the file OR the directory
-  const normalized = normalizePath(filePath);
-  const filePerm = (fsPermissions[email] || {})[`${wsName}:${normalized}`];
-  const fileOwners = filePerm?.owner ? [].concat(filePerm.owner) : [];
-  if (fileOwners.includes(apiKeyString)) return { allowed: true };
-  const dirOwners = dirPerm?.owner ? [].concat(dirPerm.owner) : [];
-  if (dirOwners.includes(apiKeyString)) return { allowed: true };
-  return { allowed: false, error: `Permission denied: sticky bit set on ${wsName}:${parentPath}` };
-}
-
-// Upsert a permission entry.
-// mode updates: string replaces entirely; object merges (null values remove individual keys).
-// Removes the entry altogether when it becomes a no-op (no meaningful mode, no owner).
-function setPermission(email, wsName, filePath, updates) {
-  if (!fsPermissions[email]) fsPermissions[email] = {};
-  const normalized = normalizePath(filePath);
-  const key = `${wsName}:${normalized}`;
-  const existing = fsPermissions[email][key] || {};
-
-  let newMode = existing.mode;
-  if (updates.mode !== undefined) {
-    if (typeof updates.mode === 'string') {
-      newMode = updates.mode;
-    } else if (typeof updates.mode === 'object' && updates.mode !== null) {
-      const base = typeof existing.mode === 'string' ? { '*': existing.mode }
-                 : typeof existing.mode === 'object' ? { ...existing.mode } : {};
-      for (const [k, v] of Object.entries(updates.mode)) {
-        if (v === null) delete base[k]; else base[k] = v;
-      }
-      const keys = Object.keys(base);
-      newMode = keys.length === 0 ? undefined
-              : keys.length === 1 && base['*'] ? base['*']
-              : base;
-    }
-  }
-
-  const newOwner = updates.owner !== undefined ? updates.owner : existing.owner;
-  // Modes that represent "default full access" — no need to store
-  const modeIsDefault = !newMode || newMode === 'rw' || newMode === '666' || newMode === '0666'
-    || (typeof newMode === 'object' && Object.keys(newMode).length === 0);
-
-  if (modeIsDefault && !newOwner) {
-    delete fsPermissions[email][key];
-  } else {
-    fsPermissions[email][key] = {
-      ...(modeIsDefault ? {} : { mode: newMode }),
-      ...(newOwner ? { owner: newOwner } : {}),
-    };
-  }
-}
-
-// Remove all permission entries for a path and any paths under it (called on delete/move).
-function removePermissionsUnder(email, wsName, filePath) {
-  if (!fsPermissions[email]) return;
-  const normalized = normalizePath(filePath);
-  const prefix = `${wsName}:${normalized}`;
-  for (const k of Object.keys(fsPermissions[email])) {
-    if (k === prefix || k.startsWith(prefix + '/')) delete fsPermissions[email][k];
-  }
 }
 
 // ── POSIX Timestamps ──────────────────────────────────────────────────
@@ -726,9 +544,9 @@ async function handleRequest(req, res) {
       let result;
       switch (type) {
         case 'JJFS_READ': {
-          const ra = checkReadAccess(email, wsName, filePath, apiKeyString);
+          const ra = checkReadAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!ra.allowed) {
-            const perm = getEffectivePermission(email, wsName, filePath);
+            const perm = getEffectivePermission(fsPermissions, email, wsName, filePath);
             return json(res, 403, { success: false, error: ra.error, permission: hashPermForResponse(perm) });
           }
           result = jjfsRead(wsForKey, wsName, filePath, startLine, endLine);
@@ -738,7 +556,7 @@ async function handleRequest(req, res) {
         case 'JJFS_WRITE': {
           if (content === undefined || content === null)
             return json(res, 400, { error: 'content is required for JJFS_WRITE' });
-          const ww = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          const ww = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!ww.allowed) return json(res, 403, { error: ww.error });
           if (!wsForKey[wsName]) wsForKey[wsName] = {};
           const isNew = !jjfsNavigate(wsForKey[wsName], filePath).name ||
@@ -754,7 +572,7 @@ async function handleRequest(req, res) {
         }
 
         case 'JJFS_EDIT': {
-          const ew = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          const ew = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!ew.allowed) return json(res, 403, { error: ew.error });
           let op;
           try { op = typeof content === 'string' ? JSON.parse(content) : content; }
@@ -771,13 +589,13 @@ async function handleRequest(req, res) {
         }
 
         case 'JJFS_DELETE': {
-          const dw = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          const dw = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!dw.allowed) return json(res, 403, { error: dw.error });
-          const ds = checkStickyBit(email, wsName, filePath, apiKeyString);
+          const ds = checkStickyBit(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!ds.allowed) return json(res, 403, { error: ds.error });
           result = jjfsDelete(wsForKey, wsName, filePath);
           if (result.success) {
-            removePermissionsUnder(email, wsName, filePath);
+            removePermissionsUnder(fsPermissions, email, wsName, filePath);
             removeTimestampsUnder(email, wsName, filePath);
             removeSymlinksUnder(email, wsName, filePath);
             removeXattrsUnder(email, wsName, filePath);
@@ -792,15 +610,15 @@ async function handleRequest(req, res) {
         case 'JJFS_MOVE': {
           if (!content) return json(res, 400, { error: 'content (destination path) is required for JJFS_MOVE' });
           const destPath = normalizePath(String(content));
-          const msw = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          const msw = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!msw.allowed) return json(res, 403, { error: msw.error });
-          const ms2 = checkStickyBit(email, wsName, filePath, apiKeyString);
+          const ms2 = checkStickyBit(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!ms2.allowed) return json(res, 403, { error: ms2.error });
-          const mdw = checkWriteAccess(email, wsName, destPath, apiKeyString);
+          const mdw = checkWriteAccess(fsPermissions, email, wsName, destPath, apiKeyString);
           if (!mdw.allowed) return json(res, 403, { error: mdw.error });
           result = jjfsMove(wsForKey, wsName, filePath, destPath);
           if (result.success) {
-            removePermissionsUnder(email, wsName, filePath);
+            removePermissionsUnder(fsPermissions, email, wsName, filePath);
             removeTimestampsUnder(email, wsName, filePath);
             removeSymlinksUnder(email, wsName, filePath);
             removeXattrsUnder(email, wsName, filePath);
@@ -814,7 +632,7 @@ async function handleRequest(req, res) {
         case 'JJFS_COPY': {
           if (!content) return json(res, 400, { error: 'content (destination path) is required for JJFS_COPY' });
           const cpDest = normalizePath(String(content));
-          const cw = checkWriteAccess(email, wsName, cpDest, apiKeyString);
+          const cw = checkWriteAccess(fsPermissions, email, wsName, cpDest, apiKeyString);
           if (!cw.allowed) return json(res, 403, { error: cw.error });
           result = jjfsCopy(wsForKey, wsName, filePath, cpDest);
           if (result.success) {
@@ -826,40 +644,29 @@ async function handleRequest(req, res) {
         }
 
         case 'JJFS_CHMOD': {
-          const mode = content;
-          if (!isValidMode(mode))
-            return json(res, 400, { error: 'JJFS_CHMOD content must be "ro", "rw", a 3- or 4-digit octal string ("644", "1755"), or an ACL object { "d2l_key": "ro"|"rw"|"[0-7]", "*": ... }' });
-          const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
-          if (!oc.allowed) return json(res, 403, { error: oc.error });
-          setPermission(email, wsName, filePath, { mode });
+          const cr = jjfsChmod(fsPermissions, email, wsName, filePath, content, apiKeyString);
+          if (!cr.success) return json(res, cr.status, { error: cr.result });
           touchTimestamps(email, wsName, filePath, ['ctime']);
           savePermissions(); saveTimestamps();
           const stored = (fsPermissions[email] || {})[`${wsName}:${normalizePath(filePath)}`];
-          result = { success: true, result: `Mode set on ${wsName}:${filePath}`, permission: hashPermForResponse(stored) };
+          result = { success: true, result: cr.result, permission: hashPermForResponse(stored) };
           break;
         }
 
         case 'JJFS_CHOWN': {
-          const oo = checkOwnerAccess(email, wsName, filePath, apiKeyString);
-          if (!oo.allowed) return json(res, 403, { error: oo.error });
-          const newOwner = content || null;
-          if (newOwner !== null) {
-            const ownerKeys = Array.isArray(newOwner) ? newOwner : [newOwner];
-            const acctKeys = (accounts[email]?.apiKeys || []).map(k => k.key);
-            const invalid = ownerKeys.filter(k => !acctKeys.includes(k));
-            if (invalid.length > 0) return json(res, 400, { error: 'owner must be valid API key(s) belonging to this account' });
-          }
-          setPermission(email, wsName, filePath, { owner: newOwner });
+          const acctKeys = (accounts[email]?.apiKeys || []).map(k => k.key);
+          const or = jjfsChown(fsPermissions, email, wsName, filePath, content, acctKeys, apiKeyString);
+          if (!or.success) return json(res, or.status, { error: or.result });
           touchTimestamps(email, wsName, filePath, ['ctime']);
           savePermissions(); saveTimestamps();
           const ownerStored = (fsPermissions[email] || {})[`${wsName}:${normalizePath(filePath)}`];
-          result = { success: true, result: newOwner ? `Owner set: ${wsName}:${filePath}` : `Owner removed: ${wsName}:${filePath}`, permission: hashPermForResponse(ownerStored) };
+          result = { success: true, result: or.result, permission: hashPermForResponse(ownerStored) };
           break;
         }
 
         case 'JJFS_SYMLINK': {
           if (!content) return json(res, 400, { error: 'content (target path) is required for JJFS_SYMLINK' });
-          const ww = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          const ww = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!ww.allowed) return json(res, 403, { error: ww.error });
           const targetPath = normalizePath(String(content));
           if (!fsSymlinks[email]) fsSymlinks[email] = {};
@@ -876,7 +683,7 @@ async function handleRequest(req, res) {
         }
 
         case 'JJFS_SETXATTR': {
-          const xw = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          const xw = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!xw.allowed) return json(res, 403, { error: xw.error });
           let xop;
           try { xop = typeof content === 'string' ? JSON.parse(content) : content; }
@@ -959,9 +766,9 @@ async function handleRequest(req, res) {
         if (!(name in parent)) return json(res, 404, { error: `Not found: ${browsePath}` });
         targetNode = parent[name];
         if (typeof targetNode === 'string') {
-          const ra = checkReadAccess(email, wsName, browsePath, apiKeyString);
+          const ra = checkReadAccess(fsPermissions, email, wsName, browsePath, apiKeyString);
           if (!ra.allowed) {
-            const perm = getEffectivePermission(email, wsName, browsePath);
+            const perm = getEffectivePermission(fsPermissions, email, wsName, browsePath);
             return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm) });
           }
           return json(res, 200, {
@@ -969,15 +776,15 @@ async function handleRequest(req, res) {
             type: 'file', content: targetNode,
             timestamps: getTimestamps(email, wsName, browsePath),
             xattrs: getXattrs(email, wsName, browsePath),
-            permission: hashPermForResponse(getEffectivePermission(email, wsName, browsePath)),
+            permission: hashPermForResponse(getEffectivePermission(fsPermissions, email, wsName, browsePath)),
           });
         }
       }
 
       // Directory listing — check read access
-      const ra = checkReadAccess(email, wsName, browsePath, apiKeyString);
+      const ra = checkReadAccess(fsPermissions, email, wsName, browsePath, apiKeyString);
       if (!ra.allowed) {
-        const perm = getEffectivePermission(email, wsName, browsePath);
+        const perm = getEffectivePermission(fsPermissions, email, wsName, browsePath);
         return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm) });
       }
 
@@ -999,7 +806,7 @@ async function handleRequest(req, res) {
         success: true, workspace: wsName, path: browsePath,
         type: 'directory', entries,
         timestamps: getTimestamps(email, wsName, browsePath),
-        permission: hashPermForResponse(getEffectivePermission(email, wsName, browsePath)),
+        permission: hashPermForResponse(getEffectivePermission(fsPermissions, email, wsName, browsePath)),
       });
     }
 
@@ -1031,7 +838,7 @@ async function handleRequest(req, res) {
         // Symlink check (for ?nofollow=1 — return symlink metadata without following)
         const symlinkTarget = (fsSymlinks[email] || {})[`${wsName}:${filePath}`];
         if (symlinkTarget && nofollow) {
-          const perm = getEffectivePermission(email, wsName, filePath);
+          const perm = getEffectivePermission(fsPermissions, email, wsName, filePath);
           return json(res, 200, {
             type: 'symlink', workspace: wsName, path: filePath, target: symlinkTarget,
             permission: hashPermForResponse(perm),
@@ -1067,9 +874,9 @@ async function handleRequest(req, res) {
 
         if (typeof targetNode === 'object') {
           // Directory — check read access
-          const ra = checkReadAccess(email, wsName, filePath, apiKeyString);
+          const ra = checkReadAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!ra.allowed) {
-            const perm = getEffectivePermission(email, wsName, filePath);
+            const perm = getEffectivePermission(fsPermissions, email, wsName, filePath);
             return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm) });
           }
           const rawEntries = Object.entries(targetNode);
@@ -1084,7 +891,7 @@ async function handleRequest(req, res) {
             if (!showAll && name.startsWith('.')) continue;
             entries.push({ name, type: 'symlink', target, timestamps: getTimestamps(email, wsName, normalizePath(filePath + '/' + name)) });
           }
-          const dp = getEffectivePermission(email, wsName, filePath);
+          const dp = getEffectivePermission(fsPermissions, email, wsName, filePath);
           return json(res, 200, {
             type: 'directory', workspace: wsName, path: filePath, entries,
             permission: hashPermForResponse(dp) ?? { mode: 'rw', owner: null },
@@ -1094,9 +901,9 @@ async function handleRequest(req, res) {
         }
 
         // File — check read access
-        const ra = checkReadAccess(email, wsName, filePath, apiKeyString);
+        const ra = checkReadAccess(fsPermissions, email, wsName, filePath, apiKeyString);
         if (!ra.allowed) {
-          const perm = getEffectivePermission(email, wsName, filePath);
+          const perm = getEffectivePermission(fsPermissions, email, wsName, filePath);
           return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm) });
         }
 
@@ -1107,7 +914,7 @@ async function handleRequest(req, res) {
           const lines = content.split('\n');
           content = lines.slice(Math.max(0, parseInt(start) - 1), Math.min(lines.length, parseInt(end))).join('\n');
         }
-        const fp = getEffectivePermission(email, wsName, filePath);
+        const fp = getEffectivePermission(fsPermissions, email, wsName, filePath);
         const ts = getTimestamps(email, wsName, filePath);
         return text(res, 200, content, {
           'X-JJFS-Permission': JSON.stringify(hashPermForResponse(fp)),
@@ -1118,7 +925,7 @@ async function handleRequest(req, res) {
       }
 
       if (method === 'PUT') {
-        const wc = checkWriteAccess(email, wsName, filePath, apiKeyString);
+        const wc = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
         if (!wc.allowed) return json(res, 403, { error: wc.error });
         if (!wsForKey[wsName]) wsForKey[wsName] = {};
         const content = await readBody(req);
@@ -1134,13 +941,13 @@ async function handleRequest(req, res) {
       }
 
       if (method === 'DELETE') {
-        const wc = checkWriteAccess(email, wsName, filePath, apiKeyString);
+        const wc = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
         if (!wc.allowed) return json(res, 403, { error: wc.error });
-        const sc = checkStickyBit(email, wsName, filePath, apiKeyString);
+        const sc = checkStickyBit(fsPermissions, email, wsName, filePath, apiKeyString);
         if (!sc.allowed) return json(res, 403, { error: sc.error });
         const r = jjfsDelete(wsForKey, wsName, filePath);
         if (r.success) {
-          removePermissionsUnder(email, wsName, filePath);
+          removePermissionsUnder(fsPermissions, email, wsName, filePath);
           removeTimestampsUnder(email, wsName, filePath);
           removeSymlinksUnder(email, wsName, filePath);
           removeXattrsUnder(email, wsName, filePath);
@@ -1159,14 +966,11 @@ async function handleRequest(req, res) {
         const { search, replace, chmod, chown, symlink, xattr } = body;
 
         if (chmod !== undefined) {
-          if (!isValidMode(chmod))
-            return json(res, 400, { error: 'chmod must be "ro", "rw", a 3- or 4-digit octal string ("644", "1755"), or an ACL object { key: "ro"|"rw"|"[0-7]", ... }' });
-          const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
-          if (!oc.allowed) return json(res, 403, { error: oc.error });
-          setPermission(email, wsName, filePath, { mode: chmod });
+          const cr = jjfsChmod(fsPermissions, email, wsName, filePath, chmod, apiKeyString);
+          if (!cr.success) return json(res, cr.status, { error: cr.result });
           touchTimestamps(email, wsName, filePath, ['ctime']);
           savePermissions(); saveTimestamps();
-          const stored = (fsPermissions[email] || {})[`${wsName}:${filePath}`];
+          const stored = (fsPermissions[email] || {})[`${wsName}:${normalizePath(filePath)}`];
           return json(res, 200, {
             success: true, workspace: wsName, path: filePath,
             permission: hashPermForResponse(stored) ?? { mode: 'rw', owner: null },
@@ -1174,19 +978,12 @@ async function handleRequest(req, res) {
         }
 
         if (chown !== undefined) {
-          const newOwner = chown || null;
-          if (newOwner !== null) {
-            const ownerKeys = Array.isArray(newOwner) ? newOwner : [newOwner];
-            const acctKeys = (accounts[email]?.apiKeys || []).map(k => k.key);
-            const invalid = ownerKeys.filter(k => !acctKeys.includes(k));
-            if (invalid.length > 0) return json(res, 400, { error: 'chown must be valid API key(s) belonging to this account' });
-          }
-          const oc = checkOwnerAccess(email, wsName, filePath, apiKeyString);
-          if (!oc.allowed) return json(res, 403, { error: oc.error });
-          setPermission(email, wsName, filePath, { owner: newOwner });
+          const acctKeys = (accounts[email]?.apiKeys || []).map(k => k.key);
+          const or = jjfsChown(fsPermissions, email, wsName, filePath, chown, acctKeys, apiKeyString);
+          if (!or.success) return json(res, or.status, { error: or.result });
           touchTimestamps(email, wsName, filePath, ['ctime']);
           savePermissions(); saveTimestamps();
-          const stored = (fsPermissions[email] || {})[`${wsName}:${filePath}`];
+          const stored = (fsPermissions[email] || {})[`${wsName}:${normalizePath(filePath)}`];
           return json(res, 200, {
             success: true, workspace: wsName, path: filePath,
             permission: hashPermForResponse(stored) ?? { mode: 'rw', owner: null },
@@ -1194,7 +991,7 @@ async function handleRequest(req, res) {
         }
 
         if (symlink !== undefined) {
-          const wc = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          const wc = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!wc.allowed) return json(res, 403, { error: wc.error });
           if (!symlink) {
             // Remove symlink
@@ -1213,7 +1010,7 @@ async function handleRequest(req, res) {
         }
 
         if (xattr !== undefined) {
-          const wc = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          const wc = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!wc.allowed) return json(res, 403, { error: wc.error });
           const xkey = `${wsName}:${filePath}`;
           if (!fsXattrs[email]) fsXattrs[email] = {};
@@ -1236,7 +1033,7 @@ async function handleRequest(req, res) {
 
         if (search === undefined || replace === undefined)
           return json(res, 400, { error: 'body must contain search+replace, chmod, chown, symlink, or xattr' });
-        const wc = checkWriteAccess(email, wsName, filePath, apiKeyString);
+        const wc = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
         if (!wc.allowed) return json(res, 403, { error: wc.error });
         const r = jjfsEdit(wsForKey, wsName, filePath, search, replace);
         if (r.success) {
@@ -1256,15 +1053,15 @@ async function handleRequest(req, res) {
         const destPath = normalizePath(String(destination));
         let r;
         if (op === 'move') {
-          const sw = checkWriteAccess(email, wsName, filePath, apiKeyString);
+          const sw = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!sw.allowed) return json(res, 403, { error: sw.error });
-          const sc = checkStickyBit(email, wsName, filePath, apiKeyString);
+          const sc = checkStickyBit(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!sc.allowed) return json(res, 403, { error: sc.error });
-          const dw = checkWriteAccess(email, wsName, destPath, apiKeyString);
+          const dw = checkWriteAccess(fsPermissions, email, wsName, destPath, apiKeyString);
           if (!dw.allowed) return json(res, 403, { error: dw.error });
           r = jjfsMove(wsForKey, wsName, filePath, destPath);
           if (r.success) {
-            removePermissionsUnder(email, wsName, filePath);
+            removePermissionsUnder(fsPermissions, email, wsName, filePath);
             removeTimestampsUnder(email, wsName, filePath);
             removeSymlinksUnder(email, wsName, filePath);
             removeXattrsUnder(email, wsName, filePath);
@@ -1272,7 +1069,7 @@ async function handleRequest(req, res) {
             savePermissions(); saveTimestamps(); saveSymlinks(); saveXattrs();
           }
         } else if (op === 'copy') {
-          const dw = checkWriteAccess(email, wsName, destPath, apiKeyString);
+          const dw = checkWriteAccess(fsPermissions, email, wsName, destPath, apiKeyString);
           if (!dw.allowed) return json(res, 403, { error: dw.error });
           r = jjfsCopy(wsForKey, wsName, filePath, destPath);
           if (r.success) {

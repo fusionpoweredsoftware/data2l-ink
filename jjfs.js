@@ -172,3 +172,206 @@ export function jjfsCopy(wsForKey, wsName, srcPath, destPath) {
   const payload = JSON.parse(JSON.stringify(srcParent[srcName]));
   return jjfsWrite(wsForKey, wsName, destPath, payload);
 }
+
+// ── JJFS File Permissions ─────────────────────────────────────────────
+// All permission functions take fsPerms as their first parameter — a map of
+// { email: { "wsName:/path": { mode, owner } } } — matching the wsForKey
+// convention so this module remains universal (no globals, no Node.js deps).
+
+export function normalizePath(p) {
+  const parts = [];
+  for (const seg of (p || '').replace(/^\//, '').split('/')) {
+    if (!seg || seg === '.') continue;
+    if (seg === '..') parts.pop();
+    else parts.push(seg);
+  }
+  return '/' + parts.join('/');
+}
+
+export function isValidMode(mode) {
+  if (mode === 'ro' || mode === 'rw') return true;
+  if (typeof mode === 'string' && /^[0-7]{3,4}$/.test(mode)) return true;
+  if (typeof mode === 'object' && mode !== null && !Array.isArray(mode))
+    return Object.values(mode).every(v =>
+      v === 'ro' || v === 'rw' || v === null || (typeof v === 'string' && /^[0-7]$/.test(v)));
+  return false;
+}
+
+export function parseOctalBits(digit) {
+  const n = parseInt(digit, 8);
+  return { read: !!(n & 4), write: !!(n & 2), execute: !!(n & 1) };
+}
+
+export function getStickyBit(mode) {
+  if (!mode || typeof mode !== 'string') return false;
+  if (/^[0-7]{4}$/.test(mode)) return !!(parseInt(mode[0], 8) & 1);
+  return false;
+}
+
+// Returns the most specific applicable permission entry for a path (searching
+// from the given path up to the workspace root), or null if none found.
+export function getEffectivePermission(fsPerms, email, wsName, filePath) {
+  const permsForEmail = fsPerms[email] || {};
+  const normalized = normalizePath(filePath);
+  const parts = normalized.replace(/^\//, '').split('/').filter(Boolean);
+  const pathsToCheck = [];
+  let current = '';
+  for (const part of parts) { current += '/' + part; pathsToCheck.push(current); }
+  pathsToCheck.reverse();
+  pathsToCheck.push('/');
+  for (const p of pathsToCheck) {
+    const key = `${wsName}:${p}`;
+    if (permsForEmail[key]) return { ...permsForEmail[key], effectivePath: p, inherited: p !== normalized };
+  }
+  return null;
+}
+
+// Decode read/write/execute bits for a specific caller from a permission entry.
+export function getPermBitsForKey(perm, callerId) {
+  const m = perm?.mode;
+  if (!m) return { read: true, write: true, execute: false };
+  if (m === 'ro') return { read: true, write: false, execute: false };
+  if (m === 'rw') return { read: true, write: true, execute: false };
+  if (typeof m === 'object') {
+    const val = m[callerId] ?? m['*'];
+    if (val === null || val === undefined) return { read: true, write: true, execute: false };
+    if (val === 'ro') return { read: true, write: false, execute: false };
+    if (val === 'rw') return { read: true, write: true, execute: false };
+    return parseOctalBits(String(val));
+  }
+  if (/^[0-7]{3,4}$/.test(m)) {
+    const owners = perm?.owner ? (Array.isArray(perm.owner) ? perm.owner : [perm.owner]) : [];
+    const isOwner = callerId && owners.includes(callerId);
+    const userDigit  = m.length === 4 ? m[1] : m[0];
+    const otherDigit = m.length === 4 ? m[3] : m[2];
+    return parseOctalBits(isOwner ? userDigit : otherDigit);
+  }
+  return { read: true, write: true, execute: false };
+}
+
+// Returns { allowed: true } or { allowed: false, error }.
+// Session auth (callerId = null) always passes.
+export function checkWriteAccess(fsPerms, email, wsName, filePath, callerId) {
+  if (!callerId) return { allowed: true };
+  const perm = getEffectivePermission(fsPerms, email, wsName, filePath);
+  const bits = getPermBitsForKey(perm, callerId);
+  if (bits.write) return { allowed: true };
+  const loc = perm?.inherited ? ` (inherited from ${wsName}:${perm.effectivePath})` : '';
+  return { allowed: false, error: `Permission denied (no write): ${wsName}:${filePath}${loc}` };
+}
+
+export function checkReadAccess(fsPerms, email, wsName, filePath, callerId) {
+  if (!callerId) return { allowed: true };
+  const perm = getEffectivePermission(fsPerms, email, wsName, filePath);
+  const bits = getPermBitsForKey(perm, callerId);
+  if (bits.read) return { allowed: true };
+  const loc = perm?.inherited ? ` (inherited from ${wsName}:${perm.effectivePath})` : '';
+  return { allowed: false, error: `Permission denied (no read): ${wsName}:${filePath}${loc}` };
+}
+
+// Checks ownership at the EXACT path only (not inherited). Anyone can modify a
+// path with no explicit owner; otherwise only a key listed as owner may.
+export function checkOwnerAccess(fsPerms, email, wsName, filePath, callerId) {
+  if (!callerId) return { allowed: true };
+  const permsForEmail = fsPerms[email] || {};
+  const normalized = normalizePath(filePath);
+  const perm = permsForEmail[`${wsName}:${normalized}`];
+  if (!perm || !perm.owner) return { allowed: true };
+  const owners = Array.isArray(perm.owner) ? perm.owner : [perm.owner];
+  if (owners.includes(callerId)) return { allowed: true };
+  return { allowed: false, error: 'Only the owner can modify permissions for this path' };
+}
+
+// Sticky bit: when a directory has the sticky bit set (1xxx), only the file
+// owner or directory owner may delete/rename files within it.
+export function checkStickyBit(fsPerms, email, wsName, filePath, callerId) {
+  if (!callerId) return { allowed: true };
+  const parentPath = normalizePath(filePath + '/..');
+  const parentKey = `${wsName}:${parentPath}`;
+  const dirPerm = (fsPerms[email] || {})[parentKey];
+  if (!dirPerm || !getStickyBit(dirPerm.mode)) return { allowed: true };
+  const normalized = normalizePath(filePath);
+  const filePerm = (fsPerms[email] || {})[`${wsName}:${normalized}`];
+  const fileOwners = filePerm?.owner ? [].concat(filePerm.owner) : [];
+  if (fileOwners.includes(callerId)) return { allowed: true };
+  const dirOwners = dirPerm?.owner ? [].concat(dirPerm.owner) : [];
+  if (dirOwners.includes(callerId)) return { allowed: true };
+  return { allowed: false, error: `Permission denied: sticky bit set on ${wsName}:${parentPath}` };
+}
+
+// Upsert a permission entry. mode updates: string replaces entirely; object
+// merges (null values remove individual keys). Removes the entry altogether
+// when it becomes a no-op (no meaningful mode, no owner).
+export function setPermission(fsPerms, email, wsName, filePath, updates) {
+  if (!fsPerms[email]) fsPerms[email] = {};
+  const normalized = normalizePath(filePath);
+  const key = `${wsName}:${normalized}`;
+  const existing = fsPerms[email][key] || {};
+
+  let newMode = existing.mode;
+  if (updates.mode !== undefined) {
+    if (typeof updates.mode === 'string') {
+      newMode = updates.mode;
+    } else if (typeof updates.mode === 'object' && updates.mode !== null) {
+      const base = typeof existing.mode === 'string' ? { '*': existing.mode }
+                 : typeof existing.mode === 'object' ? { ...existing.mode } : {};
+      for (const [k, v] of Object.entries(updates.mode)) {
+        if (v === null) delete base[k]; else base[k] = v;
+      }
+      const keys = Object.keys(base);
+      newMode = keys.length === 0 ? undefined
+              : keys.length === 1 && base['*'] ? base['*']
+              : base;
+    }
+  }
+
+  const newOwner = updates.owner !== undefined ? updates.owner : existing.owner;
+  const modeIsDefault = !newMode || newMode === 'rw' || newMode === '666' || newMode === '0666'
+    || (typeof newMode === 'object' && Object.keys(newMode).length === 0);
+
+  if (modeIsDefault && !newOwner) {
+    delete fsPerms[email][key];
+  } else {
+    fsPerms[email][key] = {
+      ...(modeIsDefault ? {} : { mode: newMode }),
+      ...(newOwner ? { owner: newOwner } : {}),
+    };
+  }
+}
+
+// Remove all permission entries for a path and any paths under it (called on delete/move).
+export function removePermissionsUnder(fsPerms, email, wsName, filePath) {
+  if (!fsPerms[email]) return;
+  const normalized = normalizePath(filePath);
+  const prefix = `${wsName}:${normalized}`;
+  for (const k of Object.keys(fsPerms[email])) {
+    if (k === prefix || k.startsWith(prefix + '/')) delete fsPerms[email][k];
+  }
+}
+
+// Set the mode (permissions) on a path. Returns { success, status, result }.
+// Does NOT handle persistence — caller must save and update timestamps.
+export function jjfsChmod(fsPerms, email, wsName, filePath, mode, callerId) {
+  if (!isValidMode(mode))
+    return { success: false, status: 400, result: 'chmod must be "ro", "rw", a 3- or 4-digit octal string ("644", "1755"), or an ACL object { key: "ro"|"rw"|"[0-7]", ... }' };
+  const oc = checkOwnerAccess(fsPerms, email, wsName, filePath, callerId);
+  if (!oc.allowed) return { success: false, status: 403, result: oc.error };
+  setPermission(fsPerms, email, wsName, filePath, { mode });
+  return { success: true, status: 200, result: `Mode set on ${wsName}:${filePath}` };
+}
+
+// Set the owner of a path. validOwners is the list of caller IDs permitted as
+// owners; owner must be null or a caller ID (or array of them) from that list.
+// Does NOT handle persistence — caller must save and update timestamps.
+export function jjfsChown(fsPerms, email, wsName, filePath, owner, validOwners, callerId) {
+  const newOwner = owner || null;
+  if (newOwner !== null) {
+    const ownerKeys = Array.isArray(newOwner) ? newOwner : [newOwner];
+    const invalid = ownerKeys.filter(k => !validOwners.includes(k));
+    if (invalid.length > 0) return { success: false, status: 400, result: 'chown owner must be in the list of valid owner IDs' };
+  }
+  const oc = checkOwnerAccess(fsPerms, email, wsName, filePath, callerId);
+  if (!oc.allowed) return { success: false, status: 403, result: oc.error };
+  setPermission(fsPerms, email, wsName, filePath, { owner: newOwner });
+  return { success: true, status: 200, result: newOwner ? `Owner set: ${wsName}:${filePath}` : `Owner removed: ${wsName}:${filePath}` };
+}
