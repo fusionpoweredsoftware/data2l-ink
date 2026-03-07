@@ -750,7 +750,8 @@ curl -X POST https://data2l.ink/api/fs/execute \
 file system backed by plain JSON. The full jjfs.js library is available to you.
 Embed response actions in your text; the system parses and executes them automatically.
 
-All mutating functions modify their first data argument in-place and return { success, result }.
+All mutating functions modify their first data argument in-place.
+Core file operations return { success, result }. Permission/xattr mutators (jjfsChmod, jjfsChown, jjfsSetXattr) also include a numeric status. Cascade helpers (remove*Under, touchTimestamps, setPermission) return void.
 All functions are pure JS: no globals, no Node.js required.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -847,22 +848,25 @@ getEffectivePermission(fsPerms, email, wsName, filePath)
 getPermBitsForKey(perm, callerId)
   → { read, write, execute }
   Decode rwx bits for a specific callerId from a permission entry.
-  callerId = null (session auth) always returns full access.
 
 checkWriteAccess(fsPerms, email, wsName, filePath, callerId)
   → { allowed: true } | { allowed: false, error }
+  callerId = null (session auth) always passes — no access check performed.
 
 checkReadAccess(fsPerms, email, wsName, filePath, callerId)
   → { allowed: true } | { allowed: false, error }
+  callerId = null always passes.
 
 checkOwnerAccess(fsPerms, email, wsName, filePath, callerId)
   → { allowed: true } | { allowed: false, error }
   Checks exact path only (not inherited). Paths with no owner allow anyone.
+  callerId = null always passes.
 
 checkStickyBit(fsPerms, email, wsName, filePath, callerId)
   → { allowed: true } | { allowed: false, error }
   When a directory has the sticky bit set, only the file or directory owner
   may delete or rename files inside it.
+  callerId = null always passes.
 
 setPermission(fsPerms, email, wsName, filePath, updates)
   → void  (mutates fsPerms)
