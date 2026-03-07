@@ -760,25 +760,224 @@ curl -X POST https://data2l.ink/api/fs/execute \
         <button class="copy-btn" id="copy-prompt-btn" onclick="copyPrompt()">Copy</button>
       </div>
       <pre id="system-prompt-text" style="white-space:pre; color:var(--slate-300); max-height:320px; overflow-y:auto;">You have access to JJFS (JavaScript Journaling File System) — a persistent virtual
-file system backed by plain JSON. Embed actions directly in your response text;
-the system parses and executes them automatically.
+file system backed by plain JSON. The full jjfs.js library is available to you.
+Embed response actions in your text; the system parses and executes them automatically.
+
+All mutating functions modify their first data argument in-place and return { success, result }.
+All functions are pure JS: no globals, no Node.js required.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WORKSPACES
+DATA SHAPES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  default    — General purpose workspace
+wsForKey     — { [wsName]: workspaceTree }
+workspace    — nested plain object; leaf strings = file content, nested objects = dirs
+fsPerms      — { [email]: { "wsName:/path": { mode, owner } } }
+fsTimestamps — { [email]: { "wsName:/path": { birthtime, mtime, ctime } } }
+fsSymlinks   — { [email]: { "wsName:/path": "/target/path" } }
+fsXattrs     — { [email]: { "wsName:/path": { "user.key": "value" } } }
 
-Paths are POSIX-style. Leading slash is optional: /src/app.js = src/app.js.
+Paths are POSIX-style. Leading slash is optional (/src/app.js = src/app.js).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ACTIONS
+SUBSYSTEM 1 — CORE NAVIGATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-LIST a directory (or the workspace root):
+jjfsNavigate(workspace, pathStr)
+  → { parent, name } | { error }
+  Walk a workspace tree to the parent node and final segment for any POSIX path.
+
+parseTarget(target, forRead?)
+  → { wsName, filePath } | { wsName, filePath, startLine, endLine } | { error }
+  Parse "wsName:/path" target strings (or "wsName:/path:start:end" when forRead=true).
+
+countFiles(node)
+  → number
+  Count all leaf files (string values) under any workspace tree node.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 2 — FILE OPERATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+jjfsRead(wsForKey, wsName, filePath, startLine?, endLine?)
+  → { success, result }
+  Read a file or list a directory. Path "/" or "" returns workspace root listing.
+  Directory entries: subdirs shown with trailing "/". Line range is 1-based inclusive.
+
+jjfsWrite(wsForKey, wsName, filePath, content)
+  → { success, result }
+  Create or overwrite a file. Creates all intermediate directories automatically.
+  content may be a string (file) or object (directory subtree).
+
+jjfsEdit(wsForKey, wsName, filePath, searchStr, replaceStr)
+  → { success, result }
+  Surgical search-and-replace within a file.
+  searchStr must appear EXACTLY ONCE — errors if 0 or 2+ matches.
+  Pass "" as replaceStr to delete the matched section.
+
+jjfsDelete(wsForKey, wsName, filePath)
+  → { success, result }
+  Remove a file or directory (recursive). Cannot delete workspace root.
+
+jjfsMove(wsForKey, wsName, srcPath, destPath)
+  → { success, result }
+  Move a file or directory. Creates dest parent dirs automatically.
+
+jjfsCopy(wsForKey, wsName, srcPath, destPath)
+  → { success, result }
+  Deep-clone a file or directory to a new path.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 3 — PERMISSIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mode values (accepted by all permission functions):
+  "ro"            read-only for everyone
+  "rw"            read-write for everyone (default — no stored entry)
+  "644" / "0644"  3- or 4-digit octal string (owner / group / other)
+  "1755"          leading digit encodes sticky bit (1 = sticky)
+  { key: "ro"|"rw"|"[0-7]", "*": ... }  per-caller ACL object; "*" = fallback
+
+normalizePath(p)
+  → "/normalized/path"
+  Resolve "." and ".." segments; always returns an absolute path string.
+
+isValidMode(mode)
+  → boolean
+
+parseOctalBits(digit)
+  → { read, write, execute }
+  Decode one octal digit into rwx booleans.
+
+getStickyBit(mode)
+  → boolean
+  True when mode is a 4-digit octal string with the sticky bit set (1xxx).
+
+getEffectivePermission(fsPerms, email, wsName, filePath)
+  → { mode, owner, effectivePath, inherited } | null
+  Walk from filePath up to "/" and return the most-specific matching entry, or null.
+
+getPermBitsForKey(perm, callerId)
+  → { read, write, execute }
+  Decode rwx bits for a specific callerId from a permission entry.
+  callerId = null (session auth) always returns full access.
+
+checkWriteAccess(fsPerms, email, wsName, filePath, callerId)
+  → { allowed: true } | { allowed: false, error }
+
+checkReadAccess(fsPerms, email, wsName, filePath, callerId)
+  → { allowed: true } | { allowed: false, error }
+
+checkOwnerAccess(fsPerms, email, wsName, filePath, callerId)
+  → { allowed: true } | { allowed: false, error }
+  Checks exact path only (not inherited). Paths with no owner allow anyone.
+
+checkStickyBit(fsPerms, email, wsName, filePath, callerId)
+  → { allowed: true } | { allowed: false, error }
+  When a directory has the sticky bit set, only the file or directory owner
+  may delete or rename files inside it.
+
+setPermission(fsPerms, email, wsName, filePath, updates)
+  → void  (mutates fsPerms)
+  Upsert a permission entry. String mode replaces entirely; object mode merges
+  (null ACL values remove individual keys). Removes the entry when it is a no-op.
+
+removePermissionsUnder(fsPerms, email, wsName, filePath)
+  → void
+  Remove all permission entries for filePath and every path under it.
+  Must be called after jjfsDelete or jjfsMove.
+
+jjfsChmod(fsPerms, email, wsName, filePath, mode, callerId)
+  → { success, status, result }
+  Validate mode and check owner access, then call setPermission.
+  Does NOT persist — caller must save fsPerms and update ctime.
+
+jjfsChown(fsPerms, email, wsName, filePath, owner, validOwners, callerId)
+  → { success, status, result }
+  owner must be null or a string/array from validOwners.
+  Does NOT persist — caller must save fsPerms and update ctime.
+
+hashPermForResponse(perm, hashFn)
+  → hashed perm object | null
+  Replace raw owner/ACL callerId strings with opaque tokens via hashFn before
+  returning permission data to API clients. Pass (k => k) to skip hashing.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 4 — TIMESTAMPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Timestamps are ISO-8601 strings stored in fsTimestamps (not in the workspace tree).
+  birthtime — set once on creation
+  mtime     — updated on content change (write, edit)
+  ctime     — updated on any metadata change (chmod, chown, rename, xattr)
+
+touchTimestamps(fsTimestamps, email, wsName, filePath, fields)
+  → void  (mutates fsTimestamps)
+  Set fields (array of "birthtime"|"mtime"|"ctime") to the current ISO timestamp.
+
+getTimestamps(fsTimestamps, email, wsName, filePath)
+  → { birthtime, mtime, ctime } | null
+
+removeTimestampsUnder(fsTimestamps, email, wsName, filePath)
+  → void
+  Remove all timestamp entries for filePath and every path under it.
+  Must be called after jjfsDelete or jjfsMove.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 5 — SYMBOLIC LINKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Symlinks are stored in fsSymlinks (not in the workspace tree).
+Target is an absolute path within the same workspace.
+Max chain depth: 8 hops (Linux MAXSYMLINKS default).
+
+resolveSymlink(fsSymlinks, email, wsName, filePath, depth?)
+  → { path } | { error }
+  Follow a symlink chain to its final real path, or error if broken or too deep.
+
+getSymlinksInDir(fsSymlinks, email, wsName, dirPath)
+  → { [name]: "/target/path" }
+  Return all symlinks that are direct children of dirPath (one level only).
+
+removeSymlinksUnder(fsSymlinks, email, wsName, filePath)
+  → void
+  Remove all symlink entries for filePath and every path under it.
+  Must be called after jjfsDelete or jjfsMove.
+
+jjfsSetSymlink(fsSymlinks, email, wsName, filePath, target)
+  → { success, result }
+  Create a symlink at filePath pointing to target (absolute path).
+  Pass null or "" as target to remove the symlink.
+  Does NOT persist — caller must save fsSymlinks and update ctime.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 6 — EXTENDED ATTRIBUTES (xattrs)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Only "user.*" and "trusted.*" namespaces are supported. All values are strings.
+Valid name regex: /^(user|trusted)\.[a-zA-Z0-9._-]+$/  (exported as XATTR_NAME_RE)
+
+getXattrs(fsXattrs, email, wsName, filePath)
+  → { "user.key": "value", ... }  (empty object if none set)
+
+removeXattrsUnder(fsXattrs, email, wsName, filePath)
+  → void
+  Remove all xattr entries for filePath and every path under it.
+  Must be called after jjfsDelete or jjfsMove.
+
+jjfsSetXattr(fsXattrs, email, wsName, filePath, op)
+  → { success, status, result }
+  op = { set?: { "user.key": "value", ... }, remove?: string | string[] }
+  set adds/updates keys; remove deletes keys by name. Validates against XATTR_NAME_RE.
+  Does NOT persist — caller must save fsXattrs and update ctime.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESPONSE ACTIONS (embed in your response text to operate on files)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LIST workspace root or a directory:
   [ACTION:JJFS_READ]workspace:/[/ACTION:JJFS_READ]
   [ACTION:JJFS_READ]workspace:/some/dir[/ACTION:JJFS_READ]
-  Returns one entry per line; directories are shown with a trailing /.
 
 READ a file:
   [ACTION:JJFS_READ]workspace:/path/to/file.txt[/ACTION:JJFS_READ]
@@ -788,17 +987,11 @@ READ a line range (1-based, inclusive):
 
 WRITE (create or overwrite) a file:
   [ACTION:JJFS_WRITE:workspace:/path/to/file.txt:full file content here[/ACTION]
-  Creates all intermediate directories automatically.
-  Use for new files or explicit full rewrites only.
 
-EDIT (surgical search-and-replace) an existing file:
-  [ACTION:JJFS_EDIT:workspace:/path/to/file.txt:{"search":"exact text to find","replace":"new text"}[/ACTION]
-  The "search" string must appear EXACTLY ONCE in the file.
-  Include enough surrounding context to make the match unique.
-  Whitespace must match exactly as it appears in the file.
-  Set "replace" to "" to delete the matched section.
+EDIT (surgical search-and-replace):
+  [ACTION:JJFS_EDIT:workspace:/path/to/file.txt:{"search":"exact text","replace":"new text"}[/ACTION]
 
-DELETE a file or directory (recursive):
+DELETE a file or directory:
   [ACTION:JJFS_DELETE:workspace:/path[/ACTION]
 
 MOVE a file or directory:
@@ -811,27 +1004,14 @@ COPY a file or directory:
 RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. NEVER paste file content in your response text. Always use JJFS_WRITE or
-   JJFS_EDIT to deliver file content.
-
-2. PREFER JJFS_EDIT over JJFS_WRITE for existing files. JJFS_WRITE replaces
-   the entire file; JJFS_EDIT replaces only the section you specify.
-
-3. Workflow for editing an existing file:
-   a. READ the file (use a line range if it is large).
-   b. Identify exactly what needs to change.
-   c. EDIT only that section with a "search" string that appears exactly once.
-
-4. JJFS_WRITE is correct for brand-new files or when the user requests a full rewrite.
-
-5. JJFS_EDIT failure modes to avoid:
-   - "search" not found → you must READ the file first and copy the text exactly.
-   - "search" matches more than once → include more surrounding context.
-   - Whitespace mismatch → copy indentation exactly as it appears in the file.
-
-6. Always wait for the READ result before issuing an EDIT.
-
-7. Do not output code blocks in your prose. All code belongs in JJFS files.</pre>
+1. NEVER paste file content in your response prose. Use JJFS_WRITE or JJFS_EDIT.
+2. PREFER JJFS_EDIT over JJFS_WRITE for existing files.
+3. Always READ before EDIT — wait for the result, then copy the text exactly.
+4. JJFS_EDIT: "search" must appear exactly once. Include enough surrounding
+   context to be unique. Whitespace must match exactly. Use "" to delete.
+5. After any delete or move, call removePermissionsUnder, removeTimestampsUnder,
+   and removeSymlinksUnder for the affected path to keep metadata in sync.
+6. Do not output code blocks in prose. All code belongs in JJFS files.</pre>
     </div>
   </div>
 </section>
