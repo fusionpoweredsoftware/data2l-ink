@@ -505,6 +505,37 @@ export function jjfsSetXattr(fsXattrs, email, wsName, filePath, op) {
   return { success: true, status: 200, result: `xattrs updated: ${wsName}:${filePath}` };
 }
 
+// ── JJFS Binary File Helpers ──────────────────────────────────────────
+// Files are stored as strings, so binary data must be base64-encoded.
+// These helpers handle the conversion automatically, working in both
+// Node.js (via Buffer) and browsers (via btoa/atob + Uint8Array).
+
+// Write binary data to a file. bytes may be a Uint8Array, Buffer, or any
+// array-like of 0–255 integers. Stored as a plain base64 string.
+export function jjfsWriteBinary(wsForKey, wsName, filePath, bytes) {
+  if (typeof Buffer !== 'undefined') {
+    return jjfsWrite(wsForKey, wsName, filePath, Buffer.from(bytes).toString('base64'));
+  }
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let s = '';
+  for (let i = 0; i < arr.length; i++) s += String.fromCharCode(arr[i]);
+  return jjfsWrite(wsForKey, wsName, filePath, btoa(s));
+}
+
+// Read a binary file written with jjfsWriteBinary.
+// Returns { success: true, result: Buffer (Node.js) | Uint8Array (browser) }.
+export function jjfsReadBinary(wsForKey, wsName, filePath) {
+  const r = jjfsRead(wsForKey, wsName, filePath);
+  if (!r.success) return r;
+  if (typeof Buffer !== 'undefined') {
+    return { success: true, result: Buffer.from(r.result, 'base64') };
+  }
+  const s = atob(r.result);
+  const arr = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) arr[i] = s.charCodeAt(i);
+  return { success: true, result: arr };
+}
+
 // ── JJFS Permission Serialization ─────────────────────────────────────
 // Convert a stored permission entry into a response-safe form by replacing raw
 // owner/ACL keys with opaque tokens via hashFn. Pass (k => k) to skip hashing.

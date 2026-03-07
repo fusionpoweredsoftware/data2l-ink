@@ -407,8 +407,8 @@
       </a>
     </div>
     <div class="stats-row">
-      <div class="stat"><div class="stat-value">532 lines</div><div class="stat-label">Total library size</div></div>
-      <div class="stat"><div class="stat-value">35 exports</div><div class="stat-label">Full API surface</div></div>
+      <div class="stat"><div class="stat-value">563 lines</div><div class="stat-label">Total library size</div></div>
+      <div class="stat"><div class="stat-value">37 exports</div><div class="stat-label">Full API surface</div></div>
       <div class="stat"><div class="stat-value">0 deps</div><div class="stat-label">Zero dependencies</div></div>
       <div class="stat"><div class="stat-value">runs in-browser</div><div class="stat-label">no server required</div></div>
     </div>
@@ -550,6 +550,7 @@
         <div class="code-header"><span class="code-lang-badge">JS</span><span>browser-only usage</span></div>
         <pre><span class="kw">import</span> <span class="op">{</span>
   <span class="fn">jjfsRead</span><span class="op">,</span> <span class="fn">jjfsWrite</span><span class="op">,</span> <span class="fn">jjfsEdit</span><span class="op">,</span> <span class="fn">jjfsDelete</span><span class="op">,</span> <span class="fn">jjfsMove</span><span class="op">,</span> <span class="fn">jjfsCopy</span><span class="op">,</span>
+  <span class="fn">jjfsWriteBinary</span><span class="op">,</span> <span class="fn">jjfsReadBinary</span><span class="op">,</span>
   <span class="fn">jjfsNavigate</span><span class="op">,</span> <span class="fn">parseTarget</span><span class="op">,</span> <span class="fn">countFiles</span><span class="op">,</span> <span class="fn">normalizePath</span><span class="op">,</span>
   <span class="fn">jjfsChmod</span><span class="op">,</span> <span class="fn">jjfsChown</span><span class="op">,</span>
   <span class="fn">getEffectivePermission</span><span class="op">,</span> <span class="fn">getPermBitsForKey</span><span class="op">,</span>
@@ -815,6 +816,16 @@ jjfsCopy(wsForKey, wsName, srcPath, destPath)
   → { success, result }
   Deep-clone a file or directory to a new path.
 
+jjfsWriteBinary(wsForKey, wsName, filePath, bytes)
+  → { success, result }
+  Write binary data (Uint8Array, Buffer, or 0–255 array-like) to a file.
+  Encodes as base64 automatically. Use for images, fonts, compiled assets, etc.
+
+jjfsReadBinary(wsForKey, wsName, filePath)
+  → { success, result: Buffer | Uint8Array }
+  Read a binary file written with jjfsWriteBinary. Decodes base64 back to bytes.
+  Returns a Buffer in Node.js or a Uint8Array in the browser.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SUBSYSTEM 3 — PERMISSIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1013,7 +1024,7 @@ RULES
     <div class="section-heading">
       <div class="section-tag">Reference</div>
       <h2>API Reference</h2>
-      <p>35 exports across 6 subsystems</p>
+      <p>37 exports across 6 subsystems</p>
     </div>
 
     <div class="tabs-nav" id="api-tabs-nav">
@@ -1037,6 +1048,8 @@ RULES
             <tr><td class="fn-name">jjfsDelete</td><td class="fn-sig">(wsForKey, wsName, filePath)</td><td class="fn-ret">{ success, result }</td></tr>
             <tr><td class="fn-name">jjfsMove</td><td class="fn-sig">(wsForKey, wsName, srcPath, destPath)</td><td class="fn-ret">{ success, result }</td></tr>
             <tr><td class="fn-name">jjfsCopy</td><td class="fn-sig">(wsForKey, wsName, srcPath, destPath)</td><td class="fn-ret">{ success, result }</td></tr>
+            <tr><td class="fn-name">jjfsWriteBinary</td><td class="fn-sig">(wsForKey, wsName, filePath, bytes)</td><td class="fn-ret">{ success, result }</td></tr>
+            <tr><td class="fn-name">jjfsReadBinary</td><td class="fn-sig">(wsForKey, wsName, filePath)</td><td class="fn-ret">{ success, result: Buffer | Uint8Array }</td></tr>
           </tbody>
         </table>
       </div>
@@ -1046,6 +1059,7 @@ RULES
           <li><span style="color:var(--cyan); font-family:var(--font-mono); margin-right:.5rem;">jjfsWrite</span> creates intermediate directories automatically. Returns <span class="inline-code">'Created:...'</span> or <span class="inline-code">'Overwrote:...'</span>.</li>
           <li><span style="color:var(--cyan); font-family:var(--font-mono); margin-right:.5rem;">jjfsEdit</span> searchStr must appear <strong>exactly once</strong>. Fails safely — nothing is changed if the search text is not found or is ambiguous.</li>
           <li><span style="color:var(--cyan); font-family:var(--font-mono); margin-right:.5rem;">jjfsDelete</span> cannot delete a workspace root. After delete, run the cascade helpers on all four metadata stores.</li>
+          <li><span style="color:var(--cyan); font-family:var(--font-mono); margin-right:.5rem;">jjfsWriteBinary</span> accepts a Uint8Array, Buffer, or any 0–255 array-like. Stores content as a base64 string. <span class="inline-code">jjfsReadBinary</span> decodes it back — returns a <span class="inline-code">Buffer</span> in Node.js or a <span class="inline-code">Uint8Array</span> in the browser.</li>
         </ul>
       </div>
     </div>
@@ -1532,7 +1546,7 @@ RULES
           <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
         </button>
         <div class="acc-body">
-          No. Files are stored as JSON strings, so content is text-only. Binary data would need to be base64-encoded before writing.
+          Yes — use <span class="inline-code">jjfsWriteBinary</span> and <span class="inline-code">jjfsReadBinary</span>. They base64-encode your data transparently, storing it as a plain string in the workspace. Both work in Node.js (returns a <span class="inline-code">Buffer</span>) and in the browser (returns a <span class="inline-code">Uint8Array</span>) without any configuration.
         </div>
       </div>
       <div class="acc-item">
