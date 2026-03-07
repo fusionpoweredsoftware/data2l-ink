@@ -759,7 +759,7 @@ curl -X POST https://data2l.ink/api/fs/execute \
         <span style="color:var(--slate-300);">system prompt template</span>
         <button class="copy-btn" id="copy-prompt-btn" onclick="copyPrompt()">Copy</button>
       </div>
-      <pre id="system-prompt-text" style="white-space:pre; color:var(--slate-300);">You have access to JJFS (JavaScript Journaling File System) — a persistent virtual
+      <pre id="system-prompt-text" style="white-space:pre; color:var(--slate-300); max-height:320px; overflow-y:auto;">You have access to JJFS (JavaScript Journaling File System) — a persistent virtual
 file system. Use it to create, read, and edit files. Actions are embedded directly
 in your response using the formats below.
 
