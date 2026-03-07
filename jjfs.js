@@ -375,3 +375,123 @@ export function jjfsChown(fsPerms, email, wsName, filePath, owner, validOwners, 
   setPermission(fsPerms, email, wsName, filePath, { owner: newOwner });
   return { success: true, status: 200, result: newOwner ? `Owner set: ${wsName}:${filePath}` : `Owner removed: ${wsName}:${filePath}` };
 }
+
+// ── JJFS Timestamps ───────────────────────────────────────────────────
+// All timestamp functions take fsTimestamps as their first parameter — a map of
+// { email: { "wsName:/path": { birthtime, mtime, ctime } } }.
+// Timestamps are ISO-8601 strings. birthtime is set once on creation; mtime on
+// content change; ctime on any metadata change (chmod, chown, rename, xattr).
+// Persistence is the caller's responsibility.
+
+// Update the given timestamp fields to now. fields: array of 'birthtime' | 'mtime' | 'ctime'.
+export function touchTimestamps(fsTimestamps, email, wsName, filePath, fields) {
+  if (!fsTimestamps[email]) fsTimestamps[email] = {};
+  const key = `${wsName}:${normalizePath(filePath)}`;
+  if (!fsTimestamps[email][key]) fsTimestamps[email][key] = {};
+  const now = new Date().toISOString();
+  for (const f of fields) fsTimestamps[email][key][f] = now;
+}
+
+// Return the timestamp object for a path, or null if none recorded.
+export function getTimestamps(fsTimestamps, email, wsName, filePath) {
+  return (fsTimestamps[email] || {})[`${wsName}:${normalizePath(filePath)}`] || null;
+}
+
+// Remove all timestamp entries for a path and any paths under it (called on delete/move).
+export function removeTimestampsUnder(fsTimestamps, email, wsName, filePath) {
+  if (!fsTimestamps[email]) return;
+  const prefix = `${wsName}:${normalizePath(filePath)}`;
+  for (const k of Object.keys(fsTimestamps[email])) {
+    if (k === prefix || k.startsWith(prefix + '/')) delete fsTimestamps[email][k];
+  }
+}
+
+// ── JJFS Symbolic Links ───────────────────────────────────────────────
+// Symlinks are stored as metadata alongside the JJFS tree; the tree itself is
+// not modified. The target is an absolute path within the same workspace.
+// All symlink functions take fsSymlinks as their first parameter — a map of
+// { email: { "wsName:/path": "/target/path" } }.
+
+// Follow a symlink chain, returning { path } or { error } if the chain is broken
+// or exceeds 8 hops (matching Linux MAXSYMLINKS default).
+export function resolveSymlink(fsSymlinks, email, wsName, filePath, depth = 0) {
+  if (depth > 8) return { error: 'Too many levels of symbolic links' };
+  const normalized = normalizePath(filePath);
+  const target = (fsSymlinks[email] || {})[`${wsName}:${normalized}`];
+  if (!target) return { path: normalized };
+  return resolveSymlink(fsSymlinks, email, wsName, normalizePath(target), depth + 1);
+}
+
+// Return a { name: "/target" } map of all symlinks whose source is a direct
+// child of dirPath (i.e. one path segment below it, no deeper).
+export function getSymlinksInDir(fsSymlinks, email, wsName, dirPath) {
+  const normalized = normalizePath(dirPath);
+  const base = normalized === '/' ? '' : normalized;
+  const prefix = `${wsName}:${base}/`;
+  const result = {};
+  for (const [k, target] of Object.entries(fsSymlinks[email] || {})) {
+    if (k.startsWith(prefix)) {
+      const rest = k.slice(prefix.length);
+      if (rest && !rest.includes('/')) result[rest] = target;
+    }
+  }
+  return result;
+}
+
+// Remove all symlink entries for a path and any paths under it (called on delete/move).
+export function removeSymlinksUnder(fsSymlinks, email, wsName, filePath) {
+  if (!fsSymlinks[email]) return;
+  const prefix = `${wsName}:${normalizePath(filePath)}`;
+  for (const k of Object.keys(fsSymlinks[email])) {
+    if (k === prefix || k.startsWith(prefix + '/')) delete fsSymlinks[email][k];
+  }
+}
+
+// ── JJFS Extended Attributes ──────────────────────────────────────────
+// Extended attributes follow the Linux xattr namespace convention. Only
+// "user.*" and "trusted.*" namespaces are supported. Values are strings.
+// All xattr functions take fsXattrs as their first parameter — a map of
+// { email: { "wsName:/path": { "user.key": "value", ... } } }.
+
+// Valid xattr names: "user.<name>" or "trusted.<name>" with alphanumeric, '.', '_', '-'.
+export const XATTR_NAME_RE = /^(user|trusted)\.[a-zA-Z0-9._-]+$/;
+
+// Return the extended attribute map for a path, or {} if none recorded.
+export function getXattrs(fsXattrs, email, wsName, filePath) {
+  return (fsXattrs[email] || {})[`${wsName}:${normalizePath(filePath)}`] || {};
+}
+
+// Remove all xattr entries for a path and any paths under it (called on delete/move).
+export function removeXattrsUnder(fsXattrs, email, wsName, filePath) {
+  if (!fsXattrs[email]) return;
+  const prefix = `${wsName}:${normalizePath(filePath)}`;
+  for (const k of Object.keys(fsXattrs[email])) {
+    if (k === prefix || k.startsWith(prefix + '/')) delete fsXattrs[email][k];
+  }
+}
+
+// ── JJFS Permission Serialization ─────────────────────────────────────
+// Convert a stored permission entry into a response-safe form by replacing raw
+// owner/ACL keys with opaque tokens via hashFn. Pass (k => k) to skip hashing.
+// hashFn: (rawKey: string) => string — e.g. SHA-256 hex of the key.
+export function hashPermForResponse(perm, hashFn) {
+  if (!perm) return null;
+  const out = {};
+  if (perm.mode !== undefined) {
+    if (typeof perm.mode === 'object' && perm.mode !== null) {
+      const hashed = {};
+      for (const [k, v] of Object.entries(perm.mode)) {
+        hashed[k === '*' ? '*' : hashFn(k)] = v;
+      }
+      out.mode = hashed;
+    } else {
+      out.mode = perm.mode;
+    }
+  }
+  out.owner = perm.owner
+    ? (Array.isArray(perm.owner) ? perm.owner.map(hashFn) : [hashFn(perm.owner)])
+    : null;
+  if (perm.effectivePath !== undefined) out.effectivePath = perm.effectivePath;
+  if (perm.inherited !== undefined) out.inherited = perm.inherited;
+  return out;
+}

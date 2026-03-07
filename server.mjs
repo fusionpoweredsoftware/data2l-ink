@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { jjfsNavigate, parseTarget, countFiles, jjfsRead, jjfsWrite, jjfsEdit, jjfsDelete, jjfsMove, jjfsCopy, normalizePath, isValidMode, parseOctalBits, getStickyBit, getEffectivePermission, getPermBitsForKey, checkWriteAccess, checkReadAccess, checkOwnerAccess, checkStickyBit, setPermission, removePermissionsUnder, jjfsChmod, jjfsChown } from './jjfs.js';
+import { jjfsNavigate, parseTarget, countFiles, jjfsRead, jjfsWrite, jjfsEdit, jjfsDelete, jjfsMove, jjfsCopy, normalizePath, isValidMode, parseOctalBits, getStickyBit, getEffectivePermission, getPermBitsForKey, checkWriteAccess, checkReadAccess, checkOwnerAccess, checkStickyBit, setPermission, removePermissionsUnder, jjfsChmod, jjfsChown, touchTimestamps, getTimestamps, removeTimestampsUnder, resolveSymlink, getSymlinksInDir, removeSymlinksUnder, XATTR_NAME_RE, getXattrs, removeXattrsUnder, hashPermForResponse } from './jjfs.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -175,105 +175,6 @@ function provisionAccount(email) {
   if (!workspaces[email]) { workspaces[email] = { default: {} }; dirty = true; }
   if (!dataStore[email])  { dataStore[email]  = {};               dirty = true; }
   if (dirty) { saveWorkspaces(); saveData(); }
-}
-
-// ── JJFS File Permissions ─────────────────────────────────────────────
-// Permission helpers (normalizePath, isValidMode, getEffectivePermission, etc.)
-// are imported from jjfs.js. They accept fsPermissions as their first parameter.
-
-// Convert a stored permission entry into a response-safe version — raw API keys
-// are replaced with SHA-256 hashes so external callers can never recover raw keys
-// (they compute hash(their_key) to match their own entry).
-function hashPermForResponse(perm) {
-  if (!perm) return null;
-  const out = {};
-  if (perm.mode !== undefined) {
-    if (typeof perm.mode === 'object' && perm.mode !== null) {
-      const hashed = {};
-      for (const [k, v] of Object.entries(perm.mode)) {
-        hashed[k === '*' ? '*' : hashKey(k)] = v;
-      }
-      out.mode = hashed;
-    } else {
-      out.mode = perm.mode;
-    }
-  }
-  out.owner = perm.owner
-    ? (Array.isArray(perm.owner) ? perm.owner.map(hashKey) : [hashKey(perm.owner)])
-    : null;
-  if (perm.effectivePath !== undefined) out.effectivePath = perm.effectivePath;
-  if (perm.inherited !== undefined) out.inherited = perm.inherited;
-  return out;
-}
-
-// ── POSIX Timestamps ──────────────────────────────────────────────────
-// fields: array of 'birthtime' | 'mtime' | 'ctime'
-function touchTimestamps(email, wsName, filePath, fields) {
-  if (!fsTimestamps[email]) fsTimestamps[email] = {};
-  const key = `${wsName}:${normalizePath(filePath)}`;
-  if (!fsTimestamps[email][key]) fsTimestamps[email][key] = {};
-  const now = new Date().toISOString();
-  for (const f of fields) fsTimestamps[email][key][f] = now;
-}
-
-function getTimestamps(email, wsName, filePath) {
-  return (fsTimestamps[email] || {})[`${wsName}:${normalizePath(filePath)}`] || null;
-}
-
-function removeTimestampsUnder(email, wsName, filePath) {
-  if (!fsTimestamps[email]) return;
-  const prefix = `${wsName}:${normalizePath(filePath)}`;
-  for (const k of Object.keys(fsTimestamps[email])) {
-    if (k === prefix || k.startsWith(prefix + '/')) delete fsTimestamps[email][k];
-  }
-}
-
-// ── Symbolic links ────────────────────────────────────────────────────
-// Symlinks are stored as server-side metadata; the JJFS tree is unchanged.
-// The symlink target is an absolute path within the same workspace.
-function resolveSymlink(email, wsName, filePath, depth = 0) {
-  if (depth > 8) return { error: 'Too many levels of symbolic links' };
-  const normalized = normalizePath(filePath);
-  const target = (fsSymlinks[email] || {})[`${wsName}:${normalized}`];
-  if (!target) return { path: normalized };
-  return resolveSymlink(email, wsName, normalizePath(target), depth + 1);
-}
-
-function getSymlinksInDir(email, wsName, dirPath) {
-  const normalized = normalizePath(dirPath);
-  const base = normalized === '/' ? '' : normalized;
-  const prefix = `${wsName}:${base}/`;
-  const result = {};
-  for (const [k, target] of Object.entries(fsSymlinks[email] || {})) {
-    if (k.startsWith(prefix)) {
-      const rest = k.slice(prefix.length);
-      if (rest && !rest.includes('/')) result[rest] = target;
-    }
-  }
-  return result; // { name: "/target/path" }
-}
-
-function removeSymlinksUnder(email, wsName, filePath) {
-  if (!fsSymlinks[email]) return;
-  const prefix = `${wsName}:${normalizePath(filePath)}`;
-  for (const k of Object.keys(fsSymlinks[email])) {
-    if (k === prefix || k.startsWith(prefix + '/')) delete fsSymlinks[email][k];
-  }
-}
-
-// ── Extended attributes ────────────────────────────────────────────────
-const XATTR_NAME_RE = /^(user|trusted)\.[a-zA-Z0-9._-]+$/;
-
-function getXattrs(email, wsName, filePath) {
-  return (fsXattrs[email] || {})[`${wsName}:${normalizePath(filePath)}`] || {};
-}
-
-function removeXattrsUnder(email, wsName, filePath) {
-  if (!fsXattrs[email]) return;
-  const prefix = `${wsName}:${normalizePath(filePath)}`;
-  for (const k of Object.keys(fsXattrs[email])) {
-    if (k === prefix || k.startsWith(prefix + '/')) delete fsXattrs[email][k];
-  }
 }
 
 // ── Session GC ───────────────────────────────────────────────────────
@@ -547,7 +448,7 @@ async function handleRequest(req, res) {
           const ra = checkReadAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!ra.allowed) {
             const perm = getEffectivePermission(fsPermissions, email, wsName, filePath);
-            return json(res, 403, { success: false, error: ra.error, permission: hashPermForResponse(perm) });
+            return json(res, 403, { success: false, error: ra.error, permission: hashPermForResponse(perm, hashKey) });
           }
           result = jjfsRead(wsForKey, wsName, filePath, startLine, endLine);
           break;
@@ -564,7 +465,7 @@ async function handleRequest(req, res) {
           result = jjfsWrite(wsForKey, wsName, filePath, content);
           if (result.success) {
             const tsFields = isNew ? ['birthtime', 'mtime', 'ctime'] : ['mtime', 'ctime'];
-            touchTimestamps(email, wsName, filePath, tsFields);
+            touchTimestamps(fsTimestamps, email, wsName, filePath, tsFields);
             saveTimestamps();
             saveWorkspaces();
           }
@@ -581,7 +482,7 @@ async function handleRequest(req, res) {
             return json(res, 400, { error: 'JJFS_EDIT content must have search and replace fields' });
           result = jjfsEdit(wsForKey, wsName, filePath, op.search, op.replace);
           if (result.success) {
-            touchTimestamps(email, wsName, filePath, ['mtime', 'ctime']);
+            touchTimestamps(fsTimestamps, email, wsName, filePath, ['mtime', 'ctime']);
             saveTimestamps();
             saveWorkspaces();
           }
@@ -596,9 +497,9 @@ async function handleRequest(req, res) {
           result = jjfsDelete(wsForKey, wsName, filePath);
           if (result.success) {
             removePermissionsUnder(fsPermissions, email, wsName, filePath);
-            removeTimestampsUnder(email, wsName, filePath);
-            removeSymlinksUnder(email, wsName, filePath);
-            removeXattrsUnder(email, wsName, filePath);
+            removeTimestampsUnder(fsTimestamps, email, wsName, filePath);
+            removeSymlinksUnder(fsSymlinks, email, wsName, filePath);
+            removeXattrsUnder(fsXattrs, email, wsName, filePath);
             savePermissions(); saveTimestamps(); saveSymlinks(); saveXattrs();
             if (wsName !== 'default' && Object.keys(wsForKey[wsName] || {}).length === 0)
               delete wsForKey[wsName];
@@ -619,10 +520,10 @@ async function handleRequest(req, res) {
           result = jjfsMove(wsForKey, wsName, filePath, destPath);
           if (result.success) {
             removePermissionsUnder(fsPermissions, email, wsName, filePath);
-            removeTimestampsUnder(email, wsName, filePath);
-            removeSymlinksUnder(email, wsName, filePath);
-            removeXattrsUnder(email, wsName, filePath);
-            touchTimestamps(email, wsName, destPath, ['mtime', 'ctime']);
+            removeTimestampsUnder(fsTimestamps, email, wsName, filePath);
+            removeSymlinksUnder(fsSymlinks, email, wsName, filePath);
+            removeXattrsUnder(fsXattrs, email, wsName, filePath);
+            touchTimestamps(fsTimestamps, email, wsName, destPath, ['mtime', 'ctime']);
             savePermissions(); saveTimestamps(); saveSymlinks(); saveXattrs();
             saveWorkspaces();
           }
@@ -636,7 +537,7 @@ async function handleRequest(req, res) {
           if (!cw.allowed) return json(res, 403, { error: cw.error });
           result = jjfsCopy(wsForKey, wsName, filePath, cpDest);
           if (result.success) {
-            touchTimestamps(email, wsName, cpDest, ['birthtime', 'mtime', 'ctime']);
+            touchTimestamps(fsTimestamps, email, wsName, cpDest, ['birthtime', 'mtime', 'ctime']);
             saveTimestamps();
             saveWorkspaces();
           }
@@ -646,10 +547,10 @@ async function handleRequest(req, res) {
         case 'JJFS_CHMOD': {
           const cr = jjfsChmod(fsPermissions, email, wsName, filePath, content, apiKeyString);
           if (!cr.success) return json(res, cr.status, { error: cr.result });
-          touchTimestamps(email, wsName, filePath, ['ctime']);
+          touchTimestamps(fsTimestamps, email, wsName, filePath, ['ctime']);
           savePermissions(); saveTimestamps();
           const stored = (fsPermissions[email] || {})[`${wsName}:${normalizePath(filePath)}`];
-          result = { success: true, result: cr.result, permission: hashPermForResponse(stored) };
+          result = { success: true, result: cr.result, permission: hashPermForResponse(stored, hashKey) };
           break;
         }
 
@@ -657,10 +558,10 @@ async function handleRequest(req, res) {
           const acctKeys = (accounts[email]?.apiKeys || []).map(k => k.key);
           const or = jjfsChown(fsPermissions, email, wsName, filePath, content, acctKeys, apiKeyString);
           if (!or.success) return json(res, or.status, { error: or.result });
-          touchTimestamps(email, wsName, filePath, ['ctime']);
+          touchTimestamps(fsTimestamps, email, wsName, filePath, ['ctime']);
           savePermissions(); saveTimestamps();
           const ownerStored = (fsPermissions[email] || {})[`${wsName}:${normalizePath(filePath)}`];
-          result = { success: true, result: or.result, permission: hashPermForResponse(ownerStored) };
+          result = { success: true, result: or.result, permission: hashPermForResponse(ownerStored, hashKey) };
           break;
         }
 
@@ -671,14 +572,14 @@ async function handleRequest(req, res) {
           const targetPath = normalizePath(String(content));
           if (!fsSymlinks[email]) fsSymlinks[email] = {};
           fsSymlinks[email][`${wsName}:${filePath}`] = targetPath;
-          touchTimestamps(email, wsName, filePath, ['birthtime', 'mtime', 'ctime']);
+          touchTimestamps(fsTimestamps, email, wsName, filePath, ['birthtime', 'mtime', 'ctime']);
           saveSymlinks(); saveTimestamps();
           result = { success: true, result: `Symlink created: ${wsName}:${filePath} -> ${targetPath}` };
           break;
         }
 
         case 'JJFS_GETXATTR': {
-          result = { success: true, result: getXattrs(email, wsName, filePath) };
+          result = { success: true, result: getXattrs(fsXattrs, email, wsName, filePath) };
           break;
         }
 
@@ -702,9 +603,9 @@ async function handleRequest(req, res) {
             for (const k of [].concat(xop.remove)) delete fsXattrs[email][xkey][k];
           }
           if (Object.keys(fsXattrs[email][xkey]).length === 0) delete fsXattrs[email][xkey];
-          touchTimestamps(email, wsName, filePath, ['ctime']);
+          touchTimestamps(fsTimestamps, email, wsName, filePath, ['ctime']);
           saveXattrs(); saveTimestamps();
-          result = { success: true, result: getXattrs(email, wsName, filePath) };
+          result = { success: true, result: getXattrs(fsXattrs, email, wsName, filePath) };
           break;
         }
 
@@ -769,14 +670,14 @@ async function handleRequest(req, res) {
           const ra = checkReadAccess(fsPermissions, email, wsName, browsePath, apiKeyString);
           if (!ra.allowed) {
             const perm = getEffectivePermission(fsPermissions, email, wsName, browsePath);
-            return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm) });
+            return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm, hashKey) });
           }
           return json(res, 200, {
             success: true, workspace: wsName, path: browsePath,
             type: 'file', content: targetNode,
-            timestamps: getTimestamps(email, wsName, browsePath),
-            xattrs: getXattrs(email, wsName, browsePath),
-            permission: hashPermForResponse(getEffectivePermission(fsPermissions, email, wsName, browsePath)),
+            timestamps: getTimestamps(fsTimestamps, email, wsName, browsePath),
+            xattrs: getXattrs(fsXattrs, email, wsName, browsePath),
+            permission: hashPermForResponse(getEffectivePermission(fsPermissions, email, wsName, browsePath), hashKey),
           });
         }
       }
@@ -785,7 +686,7 @@ async function handleRequest(req, res) {
       const ra = checkReadAccess(fsPermissions, email, wsName, browsePath, apiKeyString);
       if (!ra.allowed) {
         const perm = getEffectivePermission(fsPermissions, email, wsName, browsePath);
-        return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm) });
+        return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm, hashKey) });
       }
 
       const rawEntries = Object.entries(targetNode);
@@ -794,19 +695,19 @@ async function handleRequest(req, res) {
         name: n,
         type: typeof v === 'object' ? 'directory' : 'file',
         ...(typeof v === 'string' ? { size: v.length } : { fileCount: countFiles(v) }),
-        timestamps: getTimestamps(email, wsName, normalizePath(browsePath + '/' + n)),
+        timestamps: getTimestamps(fsTimestamps, email, wsName, normalizePath(browsePath + '/' + n)),
       }));
       // Overlay symlinks defined in this directory
-      const symlinksHere = getSymlinksInDir(email, wsName, browsePath);
+      const symlinksHere = getSymlinksInDir(fsSymlinks, email, wsName, browsePath);
       for (const [name, target] of Object.entries(symlinksHere)) {
         if (!showAll && name.startsWith('.')) continue;
-        entries.push({ name, type: 'symlink', target, timestamps: getTimestamps(email, wsName, normalizePath(browsePath + '/' + name)) });
+        entries.push({ name, type: 'symlink', target, timestamps: getTimestamps(fsTimestamps, email, wsName, normalizePath(browsePath + '/' + name)) });
       }
       return json(res, 200, {
         success: true, workspace: wsName, path: browsePath,
         type: 'directory', entries,
-        timestamps: getTimestamps(email, wsName, browsePath),
-        permission: hashPermForResponse(getEffectivePermission(fsPermissions, email, wsName, browsePath)),
+        timestamps: getTimestamps(fsTimestamps, email, wsName, browsePath),
+        permission: hashPermForResponse(getEffectivePermission(fsPermissions, email, wsName, browsePath), hashKey),
       });
     }
 
@@ -841,9 +742,9 @@ async function handleRequest(req, res) {
           const perm = getEffectivePermission(fsPermissions, email, wsName, filePath);
           return json(res, 200, {
             type: 'symlink', workspace: wsName, path: filePath, target: symlinkTarget,
-            permission: hashPermForResponse(perm),
-            timestamps: getTimestamps(email, wsName, filePath),
-            xattrs: getXattrs(email, wsName, filePath),
+            permission: hashPermForResponse(perm, hashKey),
+            timestamps: getTimestamps(fsTimestamps, email, wsName, filePath),
+            xattrs: getXattrs(fsXattrs, email, wsName, filePath),
           });
         }
 
@@ -858,7 +759,7 @@ async function handleRequest(req, res) {
           if (!(name in parent)) {
             // Path might exist only as a symlink (not in JJFS tree)
             if (symlinkTarget) {
-              const resolved = resolveSymlink(email, wsName, filePath);
+              const resolved = resolveSymlink(fsSymlinks, email, wsName, filePath);
               if (resolved.error) return json(res, 400, { error: resolved.error });
               const rNav = jjfsNavigate(ws, resolved.path);
               if (rNav.error || !(rNav.name in (rNav.parent || {})))
@@ -877,26 +778,26 @@ async function handleRequest(req, res) {
           const ra = checkReadAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!ra.allowed) {
             const perm = getEffectivePermission(fsPermissions, email, wsName, filePath);
-            return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm) });
+            return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm, hashKey) });
           }
           const rawEntries = Object.entries(targetNode);
           const filtered = showAll ? rawEntries : rawEntries.filter(([n]) => !n.startsWith('.'));
           const entries = filtered.map(([n, v]) => ({
             name: n, type: typeof v === 'object' ? 'directory' : 'file',
             ...(typeof v === 'string' ? { size: v.length } : { fileCount: countFiles(v) }),
-            timestamps: getTimestamps(email, wsName, normalizePath(filePath + '/' + n)),
+            timestamps: getTimestamps(fsTimestamps, email, wsName, normalizePath(filePath + '/' + n)),
           }));
-          const symlinksHere = getSymlinksInDir(email, wsName, filePath);
+          const symlinksHere = getSymlinksInDir(fsSymlinks, email, wsName, filePath);
           for (const [name, target] of Object.entries(symlinksHere)) {
             if (!showAll && name.startsWith('.')) continue;
-            entries.push({ name, type: 'symlink', target, timestamps: getTimestamps(email, wsName, normalizePath(filePath + '/' + name)) });
+            entries.push({ name, type: 'symlink', target, timestamps: getTimestamps(fsTimestamps, email, wsName, normalizePath(filePath + '/' + name)) });
           }
           const dp = getEffectivePermission(fsPermissions, email, wsName, filePath);
           return json(res, 200, {
             type: 'directory', workspace: wsName, path: filePath, entries,
-            permission: hashPermForResponse(dp) ?? { mode: 'rw', owner: null },
-            timestamps: getTimestamps(email, wsName, filePath),
-            xattrs: getXattrs(email, wsName, filePath),
+            permission: hashPermForResponse(dp, hashKey) ?? { mode: 'rw', owner: null },
+            timestamps: getTimestamps(fsTimestamps, email, wsName, filePath),
+            xattrs: getXattrs(fsXattrs, email, wsName, filePath),
           });
         }
 
@@ -904,7 +805,7 @@ async function handleRequest(req, res) {
         const ra = checkReadAccess(fsPermissions, email, wsName, filePath, apiKeyString);
         if (!ra.allowed) {
           const perm = getEffectivePermission(fsPermissions, email, wsName, filePath);
-          return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm) });
+          return json(res, 403, { error: ra.error, permission: hashPermForResponse(perm, hashKey) });
         }
 
         let content = String(targetNode);
@@ -915,9 +816,9 @@ async function handleRequest(req, res) {
           content = lines.slice(Math.max(0, parseInt(start) - 1), Math.min(lines.length, parseInt(end))).join('\n');
         }
         const fp = getEffectivePermission(fsPermissions, email, wsName, filePath);
-        const ts = getTimestamps(email, wsName, filePath);
+        const ts = getTimestamps(fsTimestamps, email, wsName, filePath);
         return text(res, 200, content, {
-          'X-JJFS-Permission': JSON.stringify(hashPermForResponse(fp)),
+          'X-JJFS-Permission': JSON.stringify(hashPermForResponse(fp, hashKey)),
           'X-JJFS-Mode': fp?.mode || 'rw',
           'X-JJFS-Owner': fp?.owner ? [].concat(fp.owner).map(hashKey).join(',') : '',
           ...(ts ? { 'X-JJFS-Timestamps': JSON.stringify(ts) } : {}),
@@ -933,7 +834,7 @@ async function handleRequest(req, res) {
         const isNew = !nav.error && nav.name && !(nav.name in (nav.parent || {}));
         const r = jjfsWrite(wsForKey, wsName, filePath, content);
         if (r.success) {
-          touchTimestamps(email, wsName, filePath, isNew ? ['birthtime', 'mtime', 'ctime'] : ['mtime', 'ctime']);
+          touchTimestamps(fsTimestamps, email, wsName, filePath, isNew ? ['birthtime', 'mtime', 'ctime'] : ['mtime', 'ctime']);
           saveTimestamps();
           saveWorkspaces();
         }
@@ -948,9 +849,9 @@ async function handleRequest(req, res) {
         const r = jjfsDelete(wsForKey, wsName, filePath);
         if (r.success) {
           removePermissionsUnder(fsPermissions, email, wsName, filePath);
-          removeTimestampsUnder(email, wsName, filePath);
-          removeSymlinksUnder(email, wsName, filePath);
-          removeXattrsUnder(email, wsName, filePath);
+          removeTimestampsUnder(fsTimestamps, email, wsName, filePath);
+          removeSymlinksUnder(fsSymlinks, email, wsName, filePath);
+          removeXattrsUnder(fsXattrs, email, wsName, filePath);
           savePermissions(); saveTimestamps(); saveSymlinks(); saveXattrs();
           if (wsName !== 'default' && Object.keys(wsForKey[wsName] || {}).length === 0)
             delete wsForKey[wsName];
@@ -968,12 +869,12 @@ async function handleRequest(req, res) {
         if (chmod !== undefined) {
           const cr = jjfsChmod(fsPermissions, email, wsName, filePath, chmod, apiKeyString);
           if (!cr.success) return json(res, cr.status, { error: cr.result });
-          touchTimestamps(email, wsName, filePath, ['ctime']);
+          touchTimestamps(fsTimestamps, email, wsName, filePath, ['ctime']);
           savePermissions(); saveTimestamps();
           const stored = (fsPermissions[email] || {})[`${wsName}:${normalizePath(filePath)}`];
           return json(res, 200, {
             success: true, workspace: wsName, path: filePath,
-            permission: hashPermForResponse(stored) ?? { mode: 'rw', owner: null },
+            permission: hashPermForResponse(stored, hashKey) ?? { mode: 'rw', owner: null },
           });
         }
 
@@ -981,12 +882,12 @@ async function handleRequest(req, res) {
           const acctKeys = (accounts[email]?.apiKeys || []).map(k => k.key);
           const or = jjfsChown(fsPermissions, email, wsName, filePath, chown, acctKeys, apiKeyString);
           if (!or.success) return json(res, or.status, { error: or.result });
-          touchTimestamps(email, wsName, filePath, ['ctime']);
+          touchTimestamps(fsTimestamps, email, wsName, filePath, ['ctime']);
           savePermissions(); saveTimestamps();
           const stored = (fsPermissions[email] || {})[`${wsName}:${normalizePath(filePath)}`];
           return json(res, 200, {
             success: true, workspace: wsName, path: filePath,
-            permission: hashPermForResponse(stored) ?? { mode: 'rw', owner: null },
+            permission: hashPermForResponse(stored, hashKey) ?? { mode: 'rw', owner: null },
           });
         }
 
@@ -1001,7 +902,7 @@ async function handleRequest(req, res) {
             if (!fsSymlinks[email]) fsSymlinks[email] = {};
             fsSymlinks[email][`${wsName}:${filePath}`] = targetPath;
           }
-          touchTimestamps(email, wsName, filePath, ['mtime', 'ctime']);
+          touchTimestamps(fsTimestamps, email, wsName, filePath, ['mtime', 'ctime']);
           saveSymlinks(); saveTimestamps();
           return json(res, 200, {
             success: true, workspace: wsName, path: filePath,
@@ -1026,9 +927,9 @@ async function handleRequest(req, res) {
             for (const k of [].concat(xattr.remove)) delete fsXattrs[email][xkey][k];
           }
           if (Object.keys(fsXattrs[email][xkey]).length === 0) delete fsXattrs[email][xkey];
-          touchTimestamps(email, wsName, filePath, ['ctime']);
+          touchTimestamps(fsTimestamps, email, wsName, filePath, ['ctime']);
           saveXattrs(); saveTimestamps();
-          return json(res, 200, { success: true, workspace: wsName, path: filePath, xattrs: getXattrs(email, wsName, filePath) });
+          return json(res, 200, { success: true, workspace: wsName, path: filePath, xattrs: getXattrs(fsXattrs, email, wsName, filePath) });
         }
 
         if (search === undefined || replace === undefined)
@@ -1037,7 +938,7 @@ async function handleRequest(req, res) {
         if (!wc.allowed) return json(res, 403, { error: wc.error });
         const r = jjfsEdit(wsForKey, wsName, filePath, search, replace);
         if (r.success) {
-          touchTimestamps(email, wsName, filePath, ['mtime', 'ctime']);
+          touchTimestamps(fsTimestamps, email, wsName, filePath, ['mtime', 'ctime']);
           saveTimestamps();
           saveWorkspaces();
         }
@@ -1062,10 +963,10 @@ async function handleRequest(req, res) {
           r = jjfsMove(wsForKey, wsName, filePath, destPath);
           if (r.success) {
             removePermissionsUnder(fsPermissions, email, wsName, filePath);
-            removeTimestampsUnder(email, wsName, filePath);
-            removeSymlinksUnder(email, wsName, filePath);
-            removeXattrsUnder(email, wsName, filePath);
-            touchTimestamps(email, wsName, destPath, ['mtime', 'ctime']);
+            removeTimestampsUnder(fsTimestamps, email, wsName, filePath);
+            removeSymlinksUnder(fsSymlinks, email, wsName, filePath);
+            removeXattrsUnder(fsXattrs, email, wsName, filePath);
+            touchTimestamps(fsTimestamps, email, wsName, destPath, ['mtime', 'ctime']);
             savePermissions(); saveTimestamps(); saveSymlinks(); saveXattrs();
           }
         } else if (op === 'copy') {
@@ -1073,7 +974,7 @@ async function handleRequest(req, res) {
           if (!dw.allowed) return json(res, 403, { error: dw.error });
           r = jjfsCopy(wsForKey, wsName, filePath, destPath);
           if (r.success) {
-            touchTimestamps(email, wsName, destPath, ['birthtime', 'mtime', 'ctime']);
+            touchTimestamps(fsTimestamps, email, wsName, destPath, ['birthtime', 'mtime', 'ctime']);
             saveTimestamps();
           }
         } else {
