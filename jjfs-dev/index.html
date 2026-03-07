@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jjfs.dev — JavaScript Journaling File System</title>
+  <meta name="description" content="A zero-dependency JavaScript library that gives AI models and apps a persistent virtual file system backed by plain JSON. Works in any browser or Node.js project." />
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cyan:         #00E5FF;
+      --cyan-light:   #e0faff;
+      --cyan-dim:     #00b8cc;
+      --orange:       #facc15;
+      --orange-light: #fef9c3;
+      --orange-dim:   #eab308;
+      --white:        #ffffff;
+      --slate-50:     #f8fafc;
+      --slate-100:    #f1f5f9;
+      --slate-200:    #e2e8f0;
+      --slate-300:    #cbd5e1;
+      --slate-400:    #94a3b8;
+      --slate-500:    #64748b;
+      --slate-600:    #475569;
+      --slate-700:    #334155;
+      --slate-800:    #1e293b;
+      --slate-900:    #0f172a;
+      --font-sans:    'Inter', system-ui, sans-serif;
+      --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+      --r:            10px;
+      --r-lg:         16px;
+      --r-xl:         24px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--slate-900);
+      color: var(--slate-300);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+    .section { padding: 5rem 0; }
+    .section-alt { background: var(--slate-800); }
+
+    h1,h2,h3,h4 { color: var(--white); font-weight: 700; line-height: 1.2; }
+
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(15,23,42,.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(6,182,212,.15);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px;
+    }
+    .logo { display: flex; align-items: center; gap: .5rem; font-size: 1.75rem; font-weight: 300; letter-spacing: -.5px; }
+    .logo span.jj { color: var(--cyan); }
+    .logo span.js-ext { color: var(--orange); }
+    .logo-svg { width: 36px; height: 36px; flex-shrink: 0; }
+    .nav-links { display: flex; align-items: center; gap: 2rem; }
+    .nav-links a { color: var(--slate-300); font-size: .9rem; font-weight: 500; transition: color .15s; }
+    .nav-links a:hover { color: var(--cyan); text-decoration: none; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .5rem 1.1rem; border-radius: var(--r);
+      font-size: .875rem; font-weight: 600; cursor: pointer;
+      transition: all .15s; border: none; text-decoration: none;
+    }
+    .btn-primary { background: #FFD400; color: #000 !important; }
+    .btn-primary:hover { background: #c9a800; color: #000 !important; text-decoration: none; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--slate-600); color: var(--slate-200); }
+    .btn-outline:hover { border-color: var(--cyan); color: var(--cyan); text-decoration: none; }
+    .btn-orange { background: var(--orange); color: #1a1a1a !important; }
+    .btn-orange:hover { background: var(--orange-dim); color: #1a1a1a !important; text-decoration: none; }
+
+    /* ── HERO ── */
+    .hero {
+      background: var(--slate-900);
+      padding: 6rem 0 5rem;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900;
+      letter-spacing: -.03em;
+      color: var(--white);
+      max-width: 820px; margin: 0 auto 1.25rem;
+    }
+    .hero p {
+      font-size: 1.125rem; color: var(--slate-400);
+      max-width: 640px; margin: 0 auto 2.5rem;
+    }
+    .hero-ctas { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3.5rem; }
+    .stats-row {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem;
+      padding: 2rem; background: var(--slate-800);
+      border: 1px solid rgba(6,182,212,.2);
+      border-radius: var(--r-lg); max-width: 800px; margin: 0 auto;
+    }
+    .stat { text-align: center; }
+    .stat-value { font-size: 1.35rem; font-weight: 800; color: var(--cyan); font-family: var(--font-mono); }
+    .stat-label { font-size: .8rem; color: var(--slate-400); margin-top: .15rem; }
+
+    /* ── SECTION HEADINGS ── */
+    .section-heading { margin-bottom: 2.5rem; }
+    .section-heading h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); margin-bottom: .5rem; }
+    .section-heading p { color: var(--slate-400); font-size: 1rem; }
+    .section-tag {
+      display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--cyan);
+      background: rgba(6,182,212,.1); border: 1px solid rgba(6,182,212,.25);
+      padding: .2rem .6rem; border-radius: 99px; margin-bottom: .75rem;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--slate-800);
+      border: 1px solid var(--slate-700);
+      border-radius: var(--r-lg);
+      padding: 1.75rem;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1.25rem;
+    }
+    .feature-icon {
+      font-size: 1.5rem; margin-bottom: .75rem;
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(6,182,212,.1); border-radius: var(--r);
+    }
+    .card h3 { font-size: 1rem; margin-bottom: .5rem; }
+    .card p { font-size: .9rem; color: var(--slate-400); }
+
+    /* ── PROBLEM TABLE ── */
+    .problem-table {
+      width: 100%; border-collapse: collapse; margin: 1.5rem 0;
+      font-size: .9rem;
+    }
+    .problem-table th {
+      text-align: left; padding: .6rem 1rem;
+      background: var(--slate-700); color: var(--slate-300);
+      font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .problem-table td { padding: .7rem 1rem; border-bottom: 1px solid var(--slate-700); }
+    .problem-table tr:last-child td { border-bottom: none; }
+    .problem-table tr:nth-child(even) td { background: rgba(30,41,59,.5); }
+    .problem-table td:first-child { color: var(--slate-200); font-style: italic; }
+    .problem-table td:last-child { color: var(--orange); }
+    .problem-callout {
+      background: rgba(6,182,212,.08);
+      border-left: 3px solid var(--cyan);
+      border-radius: 0 var(--r) var(--r) 0;
+      padding: 1rem 1.25rem;
+      color: var(--slate-200);
+      margin-top: 1.5rem;
+      font-size: .95rem;
+    }
+
+    /* ── CODE BLOCKS ── */
+    .code-wrap {
+      position: relative;
+      background: var(--slate-800);
+      border: 1px solid var(--slate-700);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+    }
+    .code-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .6rem 1rem;
+      background: rgba(15,23,42,.6);
+      border-bottom: 1px solid var(--slate-700);
+      font-size: .78rem; color: var(--slate-400); font-family: var(--font-mono);
+    }
+    .code-lang-badge {
+      background: rgba(6,182,212,.15); color: var(--cyan);
+      padding: .15rem .5rem; border-radius: 4px; font-size: .72rem; font-weight: 600;
+    }
+    pre {
+      margin: 0; padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      font-family: var(--font-mono); font-size: .82rem; line-height: 1.7;
+      color: var(--slate-300);
+    }
+    code { font-family: var(--font-mono); }
+    .inline-code {
+      background: var(--slate-800); border: 1px solid var(--slate-700);
+      padding: .1em .35em; border-radius: 4px;
+      font-family: var(--font-mono); font-size: .85em; color: var(--cyan);
+    }
+
+    /* simple syntax tinting */
+    .kw  { color: #c792ea; }
+    .str { color: #c3e88d; }
+    .cm  { color: var(--slate-500); font-style: italic; }
+    .fn  { color: var(--cyan); }
+    .num { color: #f78c6c; }
+    .prop{ color: #82aaff; }
+    .op  { color: var(--slate-400); }
+
+    /* ── COPY BTN ── */
+    .copy-btn {
+      padding: .25rem .65rem; border-radius: 5px; font-size: .72rem; font-weight: 600;
+      border: 1px solid var(--slate-600); background: transparent;
+      color: var(--slate-400); cursor: pointer; font-family: var(--font-sans);
+      transition: all .15s;
+    }
+    .copy-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .copy-btn.copied { border-color: #4ade80; color: #4ade80; }
+
+    /* ── TABS ── */
+    .tabs-nav {
+      display: flex; gap: .25rem; flex-wrap: wrap;
+      border-bottom: 1px solid var(--slate-700); margin-bottom: 1.5rem;
+    }
+    .tab-btn {
+      padding: .55rem 1.1rem; border: none; background: transparent;
+      color: var(--slate-400); font-family: var(--font-sans);
+      font-size: .88rem; font-weight: 500; cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px; border-radius: var(--r) var(--r) 0 0;
+      transition: all .15s;
+    }
+    .tab-btn:hover { color: var(--slate-200); }
+    .tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── API TABLE ── */
+    .api-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .api-table th {
+      text-align: left; padding: .55rem 1rem;
+      background: rgba(15,23,42,.7); color: var(--slate-400);
+      font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; font-weight: 600;
+    }
+    .api-table td { padding: .65rem 1rem; border-bottom: 1px solid var(--slate-700); vertical-align: top; }
+    .api-table tr:last-child td { border-bottom: none; }
+    .api-table tr:hover td { background: rgba(6,182,212,.04); }
+    .fn-name { color: var(--cyan); font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
+    .fn-sig  { color: var(--slate-400); font-family: var(--font-mono); font-size: .8rem; }
+    .fn-ret  { color: var(--slate-300); font-family: var(--font-mono); font-size: .8rem; white-space: nowrap; }
+    .table-wrap { border: 1px solid var(--slate-700); border-radius: var(--r-lg); overflow: hidden; }
+
+    /* ── CONCEPT BOX ── */
+    .concept-box {
+      background: rgba(15,23,42,.6);
+      border: 1px solid rgba(6,182,212,.2);
+      border-radius: var(--r-lg);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+      font-size: .88rem; color: var(--slate-300);
+    }
+    .concept-box h4 { color: var(--cyan); font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; margin-bottom: .6rem; }
+
+    /* inline mode table inside concept box */
+    .mode-table { width: 100%; border-collapse: collapse; margin-top: .6rem; font-size: .83rem; }
+    .mode-table td { padding: .3rem .5rem; }
+    .mode-table td:first-child { font-family: var(--font-mono); color: var(--cyan); white-space: nowrap; padding-right: 1rem; }
+    .mode-table tr { border-bottom: 1px solid rgba(100,116,139,.2); }
+    .mode-table tr:last-child { border-bottom: none; }
+
+    /* ── ACCORDION ── */
+    .accordion { display: flex; flex-direction: column; gap: .6rem; }
+    .acc-item {
+      background: var(--slate-800); border: 1px solid var(--slate-700);
+      border-radius: var(--r-lg); overflow: hidden;
+    }
+    .acc-trigger {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 1.35rem; background: none; border: none;
+      text-align: left; cursor: pointer; font-family: var(--font-sans);
+      font-size: .95rem; font-weight: 600; color: var(--slate-200);
+      transition: color .15s;
+    }
+    .acc-trigger:hover { color: var(--cyan); }
+    .acc-arrow {
+      color: var(--slate-500); font-size: .75rem; transition: transform .2s;
+      flex-shrink: 0; margin-left: 1rem;
+    }
+    .acc-item.open .acc-arrow { transform: rotate(180deg); }
+    .acc-body { display: none; padding: 0 1.35rem 1.25rem; font-size: .9rem; color: var(--slate-400); line-height: 1.7; }
+    .acc-item.open .acc-body { display: block; }
+
+    /* ── CHECKLIST ── */
+    .checklist-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .checklist-cols { grid-template-columns: 1fr; } }
+    .checklist-card { background: var(--slate-800); border: 1px solid var(--slate-700); border-radius: var(--r-lg); padding: 1.75rem; }
+    .checklist-card h3 { font-size: 1rem; margin-bottom: 1.1rem; color: var(--white); }
+    .checklist-card ul { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
+    .checklist-card li {
+      display: flex; align-items: flex-start; gap: .6rem;
+      font-size: .875rem; color: var(--slate-300);
+    }
+    .checklist-card li::before { content: '✓'; color: var(--cyan); flex-shrink: 0; font-weight: 700; margin-top: .05rem; }
+
+    /* ── HTTP TABLE ── */
+    .http-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .http-table th { text-align: left; padding: .55rem 1rem; background: rgba(15,23,42,.7); color: var(--slate-400); font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+    .http-table td { padding: .65rem 1rem; border-bottom: 1px solid var(--slate-700); vertical-align: top; }
+    .http-table tr:last-child td { border-bottom: none; }
+    .http-method { font-family: var(--font-mono); font-weight: 700; font-size: .8rem; }
+    .http-method.get { color: #4ade80; }
+    .http-method.post { color: var(--cyan); }
+    .http-method.put { color: var(--orange); }
+    .http-method.del { color: #f87171; }
+    .http-method.patch { color: #c084fc; }
+    .http-endpoint { font-family: var(--font-mono); color: var(--slate-200); font-size: .82rem; }
+    .not-used { color: var(--slate-600); font-style: italic; }
+
+    /* ── JSON VIZ ── */
+    .json-tree {
+      background: var(--slate-800); border: 1px solid var(--slate-700);
+      border-radius: var(--r-lg); padding: 1.5rem;
+    }
+    .json-caption {
+      margin-top: 1rem; font-size: .85rem; color: var(--slate-400);
+      font-style: italic; padding: 0 .25rem;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--slate-900); border-top: 1px solid var(--slate-800);
+      padding: 2.5rem 0; text-align: center;
+      color: var(--slate-500); font-size: .875rem;
+    }
+    footer p { margin-bottom: .75rem; }
+    footer a { color: var(--slate-400); transition: color .15s; }
+    footer a:hover { color: var(--cyan); text-decoration: none; }
+    .footer-links { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; }
+
+    /* ── PROSE ── */
+    .prose p { margin-bottom: .85rem; }
+    .prose p:last-child { margin-bottom: 0; }
+    .note {
+      background: rgba(250,204,21,.07); border-left: 3px solid var(--orange);
+      border-radius: 0 var(--r) var(--r) 0;
+      padding: .75rem 1rem; font-size: .875rem; color: var(--slate-300);
+      margin-top: .75rem;
+    }
+    .note strong { color: var(--orange); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .nav-links { gap: 1rem; }
+      .nav-links a { display: none; }
+      .stats-row { gap: 1.25rem; }
+      pre { font-size: .78rem; }
+      .api-table, .http-table { font-size: .78rem; }
+      .fn-sig { display: none; }
+    }
+    @media (max-width: 520px) {
+      .hero-ctas { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ NAV ═══════════════ -->
+<nav>
+  <div class="container nav-inner">
+    <a href="#" class="logo" style="text-decoration:none;">
+      <svg class="logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <circle cx="256" cy="256" r="200" fill="black"/>
+        <circle cx="256" cy="256" r="210" stroke="#0CE4FF" stroke-width="18" fill="none"/>
+        <path d="M256 256 m-120 0 a120 120 0 1 1 240 0 a90 90 0 1 0 -180 0 a60 60 0 1 1 120 0 a30 30 0 1 0 -60 0" stroke="#FFD400" stroke-width="22" stroke-linecap="round" fill="none"/>
+        <text x="256" y="355" text-anchor="middle" font-family="monospace" font-size="96" font-weight="900" letter-spacing="10" fill="#0CE4FF">JJFS</text>
+      </svg>
+      <span class="jj">jjfs</span><span class="js-ext">.dev</span>
+    </a>
+    <div class="nav-links">
+      <a href="#get-started">Get Started</a>
+      <a href="#api">API</a>
+      <a href="#http-api">HTTP API</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://data2l.ink" class="btn btn-primary" target="_blank" rel="noopener">data2l.ink</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<section class="hero">
+  <div class="container">
+    <div class="section-tag">Zero Dependencies &bull; Universal &bull; AI-Ready</div>
+    <h1>Give any AI model a persistent file system.</h1>
+    <p>jjfs.js is a zero-dependency JavaScript library that gives AI models and apps a virtual file system backed by plain JSON. Works in any browser or Node.js project.</p>
+    <div class="hero-ctas">
+      <a href="#get-started" class="btn btn-primary">Get Started</a>
+      <a href="https://github.com/fusionpoweredsoftware/data2l-ink" class="btn btn-outline" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.021c0 4.428 2.865 8.184 6.839 9.504.5.092.682-.217.682-.482 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482C19.138 20.2 22 16.447 22 12.021 22 6.484 17.522 2 12 2z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-value">563 lines</div><div class="stat-label">Total library size</div></div>
+      <div class="stat"><div class="stat-value">37 exports</div><div class="stat-label">Full API surface</div></div>
+      <div class="stat"><div class="stat-value">0 deps</div><div class="stat-label">Zero dependencies</div></div>
+      <div class="stat"><div class="stat-value">runs in-browser</div><div class="stat-label">no server required</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ THE PROBLEM ═══════════════ -->
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Context</div>
+      <h2>The Problem</h2>
+    </div>
+    <p style="color:var(--slate-300); margin-bottom:1.25rem;">AI models are stateless. Every request arrives without memory. This breaks multi-turn tasks — the model cannot see what it wrote last turn, which files exist, or what has changed.</p>
+    <div class="table-wrap">
+      <table class="problem-table">
+        <thead><tr><th>Workaround</th><th>The catch</th></tr></thead>
+        <tbody>
+          <tr><td>Paste all files into every prompt</td><td>Context window fills fast; expensive</td></tr>
+          <tr><td>Store files server-side, summarize</td><td>Information is lost in translation</td></tr>
+          <tr><td>Ask the model to output a diff</td><td>Fragile; requires careful post-processing</td></tr>
+          <tr><td>Use a tool-call API</td><td>Locks you to one provider's function-calling format</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="problem-callout">
+      <strong>JJFS is a different answer:</strong> give the model a named virtual folder, teach it a simple tagged syntax for reading and writing files inside that folder, and let it work.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ WHAT IT LOOKS LIKE ═══════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Data Model</div>
+      <h2>What it looks like</h2>
+    </div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang-badge">JSON</span><span>workspace structure</span></div>
+      <pre><span class="op">{</span>
+  <span class="prop">"default"</span><span class="op">:</span> <span class="op">{</span>
+    <span class="prop">"README.md"</span><span class="op">:</span> <span class="str">"# My Project"</span><span class="op">,</span>
+    <span class="prop">"src"</span><span class="op">:</span> <span class="op">{</span>
+      <span class="prop">"index.js"</span><span class="op">:</span> <span class="str">"console.log('hello');"</span><span class="op">,</span>
+      <span class="prop">"utils.js"</span><span class="op">:</span> <span class="str">"export function add(a, b) { return a + b; }"</span>
+    <span class="op">}</span>
+  <span class="op">}</span>
+<span class="op">}</span></pre>
+    </div>
+    <p class="json-caption">A workspace is a named root. A file is a string value. A directory is a nested object. That is the entire data model for the file tree.</p>
+  </div>
+</section>
+
+<!-- ═══════════════ DATA MODEL ═══════════════ -->
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Internals</div>
+      <h2>Data Model</h2>
+    </div>
+
+    <h3 style="margin-bottom:.75rem; font-size:1.1rem;">1. Workspace map — <span style="color:var(--cyan); font-family:var(--font-mono);">wsForKey</span></h3>
+    <p style="color:var(--slate-400); margin-bottom:1rem;">All file operations take a <span class="inline-code">wsForKey</span> object as their first argument.</p>
+    <div class="code-wrap" style="margin-bottom:1.5rem;">
+      <div class="code-header"><span class="code-lang-badge">JS</span></div>
+      <pre><span class="kw">const</span> <span class="fn">wsForKey</span> <span class="op">=</span> <span class="op">{</span>
+  <span class="prop">default</span><span class="op">:</span> <span class="op">{</span>
+    <span class="str">'hello.txt'</span><span class="op">:</span> <span class="str">'Hello, world!'</span><span class="op">,</span>
+    <span class="prop">src</span><span class="op">:</span> <span class="op">{</span> <span class="str">'index.js'</span><span class="op">:</span> <span class="str">'console.log("hi");'</span> <span class="op">},</span>
+  <span class="op">},</span>
+  <span class="prop">docs</span><span class="op">:</span> <span class="op">{</span> <span class="str">'guide.md'</span><span class="op">:</span> <span class="str">'# Guide'</span> <span class="op">},</span>
+<span class="op">};</span></pre>
+    </div>
+    <p style="color:var(--slate-400); margin-bottom:2rem;">A file is a string value. A directory is a plain object. A workspace is a named entry in <span class="inline-code">wsForKey</span>.</p>
+
+    <h3 style="margin-bottom:.75rem; font-size:1.1rem;">2. Metadata stores</h3>
+    <p style="color:var(--slate-400); margin-bottom:1rem;">Permissions, timestamps, symlinks, and extended attributes are stored in separate flat-keyed objects:</p>
+    <div class="code-wrap" style="margin-bottom:1rem;">
+      <div class="code-header"><span class="code-lang-badge">JS</span></div>
+      <pre><span class="kw">const</span> <span class="fn">fsPerms</span>      <span class="op">=</span> <span class="op">{};</span> <span class="cm">// { email: { "ws:/path": { mode, owner } } }</span>
+<span class="kw">const</span> <span class="fn">fsTimestamps</span> <span class="op">=</span> <span class="op">{};</span> <span class="cm">// { email: { "ws:/path": { birthtime, mtime, ctime } } }</span>
+<span class="kw">const</span> <span class="fn">fsSymlinks</span>   <span class="op">=</span> <span class="op">{};</span> <span class="cm">// { email: { "ws:/path": "/target/path" } }</span>
+<span class="kw">const</span> <span class="fn">fsXattrs</span>     <span class="op">=</span> <span class="op">{};</span> <span class="cm">// { email: { "ws:/path": { "user.key": "value" } } }</span></pre>
+    </div>
+    <p style="color:var(--slate-400);">All metadata functions take their store as the first parameter. No globals. Persistence is the caller's responsibility.</p>
+  </div>
+</section>
+
+<!-- ═══════════════ FEATURES STRIP ═══════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Features</div>
+      <h2>Everything you need, nothing you don't</h2>
+    </div>
+    <div class="card-grid">
+      <div class="card">
+        <div class="feature-icon">&#9711;</div>
+        <h3>Zero dependencies</h3>
+        <p>No imports. No Node.js. Copy <span class="inline-code">jjfs.js</span> into your project and import it. That's it.</p>
+      </div>
+      <div class="card">
+        <div class="feature-icon">&#9729;</div>
+        <h3>Universal</h3>
+        <p>Runs in any modern browser as an ES module, or in any Node.js / Deno / Bun project.</p>
+      </div>
+      <div class="card">
+        <div class="feature-icon">&#128274;</div>
+        <h3>POSIX-inspired permissions</h3>
+        <p>Full chmod/chown system with ACL objects, octal modes, sticky bit, and inheritance.</p>
+      </div>
+      <div class="card">
+        <div class="feature-icon">&#128336;</div>
+        <h3>Timestamps, symlinks, xattrs</h3>
+        <p>POSIX-style metadata tracked in parallel stores alongside the file tree.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ GET STARTED ═══════════════ -->
+<section class="section section-alt" id="get-started">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Quick Start</div>
+      <h2>Get Started</h2>
+    </div>
+
+    <div class="tabs-nav" id="gs-tabs-nav">
+      <button class="tab-btn active" data-tab="gs-browser">Browser only</button>
+      <button class="tab-btn" data-tab="gs-server">With a Server</button>
+      <button class="tab-btn" data-tab="gs-cloud">data2l.ink</button>
+    </div>
+
+    <!-- TAB: Browser only -->
+    <div class="tab-panel active" id="gs-browser">
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang-badge">JS</span><span>browser-only usage</span></div>
+        <pre><span class="kw">import</span> <span class="op">{</span>
+  <span class="fn">jjfsRead</span><span class="op">,</span> <span class="fn">jjfsWrite</span><span class="op">,</span> <span class="fn">jjfsEdit</span><span class="op">,</span> <span class="fn">jjfsDelete</span><span class="op">,</span> <span class="fn">jjfsMove</span><span class="op">,</span> <span class="fn">jjfsCopy</span><span class="op">,</span>
+  <span class="fn">jjfsWriteBinary</span><span class="op">,</span> <span class="fn">jjfsReadBinary</span><span class="op">,</span>
+  <span class="fn">jjfsNavigate</span><span class="op">,</span> <span class="fn">parseTarget</span><span class="op">,</span> <span class="fn">countFiles</span><span class="op">,</span> <span class="fn">normalizePath</span><span class="op">,</span>
+  <span class="fn">jjfsChmod</span><span class="op">,</span> <span class="fn">jjfsChown</span><span class="op">,</span>
+  <span class="fn">getEffectivePermission</span><span class="op">,</span> <span class="fn">getPermBitsForKey</span><span class="op">,</span>
+  <span class="fn">checkReadAccess</span><span class="op">,</span> <span class="fn">checkWriteAccess</span><span class="op">,</span> <span class="fn">checkOwnerAccess</span><span class="op">,</span> <span class="fn">checkStickyBit</span><span class="op">,</span>
+  <span class="fn">setPermission</span><span class="op">,</span> <span class="fn">removePermissionsUnder</span><span class="op">,</span>
+  <span class="fn">isValidMode</span><span class="op">,</span> <span class="fn">parseOctalBits</span><span class="op">,</span> <span class="fn">getStickyBit</span><span class="op">,</span>
+  <span class="fn">touchTimestamps</span><span class="op">,</span> <span class="fn">getTimestamps</span><span class="op">,</span> <span class="fn">removeTimestampsUnder</span><span class="op">,</span>
+  <span class="fn">jjfsSetSymlink</span><span class="op">,</span> <span class="fn">resolveSymlink</span><span class="op">,</span> <span class="fn">getSymlinksInDir</span><span class="op">,</span> <span class="fn">removeSymlinksUnder</span><span class="op">,</span>
+  <span class="fn">jjfsSetXattr</span><span class="op">,</span> <span class="fn">getXattrs</span><span class="op">,</span> <span class="fn">removeXattrsUnder</span><span class="op">,</span> <span class="fn">XATTR_NAME_RE</span><span class="op">,</span>
+  <span class="fn">hashPermForResponse</span><span class="op">,</span>
+<span class="op">}</span> <span class="kw">from</span> <span class="str">'./jjfs.js'</span><span class="op">;</span>
+
+<span class="cm">// Create stores</span>
+<span class="kw">const</span> <span class="fn">wsForKey</span>     <span class="op">=</span> <span class="op">{</span> <span class="prop">default</span><span class="op">:</span> <span class="op">{}</span> <span class="op">};</span>
+<span class="kw">const</span> <span class="fn">fsPerms</span>      <span class="op">=</span> <span class="op">{};</span>
+<span class="kw">const</span> <span class="fn">fsTimestamps</span> <span class="op">=</span> <span class="op">{};</span>
+<span class="kw">const</span> <span class="fn">fsSymlinks</span>   <span class="op">=</span> <span class="op">{};</span>
+<span class="kw">const</span> <span class="fn">fsXattrs</span>     <span class="op">=</span> <span class="op">{};</span>
+
+<span class="cm">// Write a file</span>
+<span class="fn">jjfsWrite</span><span class="op">(</span><span class="fn">wsForKey</span><span class="op">,</span> <span class="str">'default'</span><span class="op">,</span> <span class="str">'/hello.txt'</span><span class="op">,</span> <span class="str">'Hello, world!'</span><span class="op">);</span>
+<span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="str">'user@example.com'</span><span class="op">,</span> <span class="str">'default'</span><span class="op">,</span> <span class="str">'/hello.txt'</span><span class="op">,</span>
+  <span class="op">[</span><span class="str">'birthtime'</span><span class="op">,</span> <span class="str">'mtime'</span><span class="op">,</span> <span class="str">'ctime'</span><span class="op">]);</span>
+
+<span class="cm">// Read it back</span>
+<span class="kw">const</span> <span class="prop">r</span> <span class="op">=</span> <span class="fn">jjfsRead</span><span class="op">(</span><span class="fn">wsForKey</span><span class="op">,</span> <span class="str">'default'</span><span class="op">,</span> <span class="str">'/hello.txt'</span><span class="op">);</span>
+<span class="fn">console</span><span class="op">.</span><span class="fn">log</span><span class="op">(</span><span class="prop">r</span><span class="op">.</span><span class="prop">result</span><span class="op">);</span> <span class="cm">// 'Hello, world!'</span></pre>
+      </div>
+      <div class="note" style="margin-top:1rem;"><strong>No build step. No npm install.</strong> Persistence is up to you — wire <span class="inline-code">localStorage</span>, <span class="inline-code">IndexedDB</span>, or a remote API.</div>
+    </div>
+
+    <!-- TAB: With a Server -->
+    <div class="tab-panel" id="gs-server">
+      <div class="code-wrap">
+        <div class="code-header"><span class="code-lang-badge">JS</span><span>Node.js server with persistence</span></div>
+        <pre><span class="kw">import</span> <span class="prop">fs</span> <span class="kw">from</span> <span class="str">'fs'</span><span class="op">;</span>
+<span class="kw">import</span> <span class="op">{</span>
+  <span class="fn">jjfsRead</span><span class="op">,</span> <span class="fn">jjfsWrite</span><span class="op">,</span> <span class="fn">jjfsEdit</span><span class="op">,</span> <span class="fn">jjfsDelete</span><span class="op">,</span> <span class="fn">jjfsMove</span><span class="op">,</span> <span class="fn">jjfsCopy</span><span class="op">,</span>
+  <span class="fn">jjfsChmod</span><span class="op">,</span> <span class="fn">jjfsChown</span><span class="op">,</span> <span class="fn">jjfsSetSymlink</span><span class="op">,</span> <span class="fn">jjfsSetXattr</span><span class="op">,</span> <span class="fn">getXattrs</span><span class="op">,</span>
+  <span class="fn">parseTarget</span><span class="op">,</span> <span class="fn">touchTimestamps</span><span class="op">,</span>
+  <span class="fn">removePermissionsUnder</span><span class="op">,</span> <span class="fn">removeTimestampsUnder</span><span class="op">,</span>
+  <span class="fn">removeSymlinksUnder</span><span class="op">,</span> <span class="fn">removeXattrsUnder</span><span class="op">,</span>
+<span class="op">}</span> <span class="kw">from</span> <span class="str">'./jjfs.js'</span><span class="op">;</span>
+
+<span class="cm">// Load five stores on startup</span>
+<span class="kw">function</span> <span class="fn">load</span><span class="op">(</span><span class="prop">file</span><span class="op">)</span> <span class="op">{</span>
+  <span class="kw">try</span> <span class="op">{</span> <span class="kw">return</span> <span class="prop">JSON</span><span class="op">.</span><span class="fn">parse</span><span class="op">(</span><span class="prop">fs</span><span class="op">.</span><span class="fn">readFileSync</span><span class="op">(</span><span class="prop">file</span><span class="op">,</span> <span class="str">'utf8'</span><span class="op">));</span> <span class="op">}</span> <span class="kw">catch</span> <span class="op">{</span> <span class="kw">return</span> <span class="op">{};</span> <span class="op">}</span>
+<span class="op">}</span>
+
+<span class="kw">const</span> <span class="fn">wsForKey</span>     <span class="op">=</span> <span class="fn">load</span><span class="op">(</span><span class="str">'./workspaces.json'</span><span class="op">);</span>
+<span class="kw">const</span> <span class="fn">fsPerms</span>      <span class="op">=</span> <span class="fn">load</span><span class="op">(</span><span class="str">'./permissions.json'</span><span class="op">);</span>
+<span class="kw">const</span> <span class="fn">fsTimestamps</span> <span class="op">=</span> <span class="fn">load</span><span class="op">(</span><span class="str">'./timestamps.json'</span><span class="op">);</span>
+<span class="kw">const</span> <span class="fn">fsSymlinks</span>   <span class="op">=</span> <span class="fn">load</span><span class="op">(</span><span class="str">'./symlinks.json'</span><span class="op">);</span>
+<span class="kw">const</span> <span class="fn">fsXattrs</span>     <span class="op">=</span> <span class="fn">load</span><span class="op">(</span><span class="str">'./xattrs.json'</span><span class="op">);</span>
+<span class="kw">if</span> <span class="op">(!</span><span class="fn">wsForKey</span><span class="op">.</span><span class="prop">default</span><span class="op">)</span> <span class="fn">wsForKey</span><span class="op">.</span><span class="prop">default</span> <span class="op">=</span> <span class="op">{};</span>
+
+<span class="kw">function</span> <span class="fn">save</span><span class="op">()</span> <span class="op">{</span>
+  <span class="prop">fs</span><span class="op">.</span><span class="fn">writeFileSync</span><span class="op">(</span><span class="str">'./workspaces.json'</span><span class="op">,</span>  <span class="prop">JSON</span><span class="op">.</span><span class="fn">stringify</span><span class="op">(</span><span class="fn">wsForKey</span><span class="op">,</span>     <span class="kw">null</span><span class="op">,</span> <span class="num">2</span><span class="op">));</span>
+  <span class="prop">fs</span><span class="op">.</span><span class="fn">writeFileSync</span><span class="op">(</span><span class="str">'./permissions.json'</span><span class="op">,</span> <span class="prop">JSON</span><span class="op">.</span><span class="fn">stringify</span><span class="op">(</span><span class="fn">fsPerms</span><span class="op">,</span>      <span class="kw">null</span><span class="op">,</span> <span class="num">2</span><span class="op">));</span>
+  <span class="prop">fs</span><span class="op">.</span><span class="fn">writeFileSync</span><span class="op">(</span><span class="str">'./timestamps.json'</span><span class="op">,</span>  <span class="prop">JSON</span><span class="op">.</span><span class="fn">stringify</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="kw">null</span><span class="op">,</span> <span class="num">2</span><span class="op">));</span>
+  <span class="prop">fs</span><span class="op">.</span><span class="fn">writeFileSync</span><span class="op">(</span><span class="str">'./symlinks.json'</span><span class="op">,</span>    <span class="prop">JSON</span><span class="op">.</span><span class="fn">stringify</span><span class="op">(</span><span class="fn">fsSymlinks</span><span class="op">,</span>   <span class="kw">null</span><span class="op">,</span> <span class="num">2</span><span class="op">));</span>
+  <span class="prop">fs</span><span class="op">.</span><span class="fn">writeFileSync</span><span class="op">(</span><span class="str">'./xattrs.json'</span><span class="op">,</span>      <span class="prop">JSON</span><span class="op">.</span><span class="fn">stringify</span><span class="op">(</span><span class="fn">fsXattrs</span><span class="op">,</span>     <span class="kw">null</span><span class="op">,</span> <span class="num">2</span><span class="op">));</span>
+<span class="op">}</span>
+
+<span class="cm">// POST /api/fs/execute</span>
+<span class="prop">app</span><span class="op">.</span><span class="fn">post</span><span class="op">(</span><span class="str">'/api/fs/execute'</span><span class="op">,</span> <span class="op">(</span><span class="prop">req</span><span class="op">,</span> <span class="prop">res</span><span class="op">)</span> <span class="op">=&gt;</span> <span class="op">{</span>
+  <span class="kw">const</span> <span class="op">{</span> <span class="prop">type</span><span class="op">,</span> <span class="prop">target</span><span class="op">,</span> <span class="prop">content</span> <span class="op">}</span> <span class="op">=</span> <span class="prop">req</span><span class="op">.</span><span class="prop">body</span><span class="op">;</span>
+  <span class="kw">const</span> <span class="prop">email</span>    <span class="op">=</span> <span class="prop">req</span><span class="op">.</span><span class="prop">user</span><span class="op">.</span><span class="prop">email</span><span class="op">;</span>
+  <span class="kw">const</span> <span class="prop">callerId</span> <span class="op">=</span> <span class="prop">req</span><span class="op">.</span><span class="prop">headers</span><span class="op">[</span><span class="str">'x-api-key'</span><span class="op">]</span> <span class="op">||</span> <span class="kw">null</span><span class="op">;</span>
+  <span class="kw">const</span> <span class="op">{</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="prop">startLine</span><span class="op">,</span> <span class="prop">endLine</span> <span class="op">}</span> <span class="op">=</span>
+    <span class="fn">parseTarget</span><span class="op">(</span><span class="prop">target</span><span class="op">,</span> <span class="prop">type</span> <span class="op">===</span> <span class="str">'JJFS_READ'</span><span class="op">);</span>
+
+  <span class="kw">let</span> <span class="prop">result</span><span class="op">;</span>
+  <span class="kw">switch</span> <span class="op">(</span><span class="prop">type</span><span class="op">)</span> <span class="op">{</span>
+    <span class="kw">case</span> <span class="str">'JJFS_READ'</span><span class="op">:</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="fn">jjfsRead</span><span class="op">(</span><span class="fn">wsForKey</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="prop">startLine</span><span class="op">,</span> <span class="prop">endLine</span><span class="op">);</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">case</span> <span class="str">'JJFS_WRITE'</span><span class="op">:</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="fn">jjfsWrite</span><span class="op">(</span><span class="fn">wsForKey</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="prop">content</span><span class="op">);</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="prop">result</span><span class="op">.</span><span class="prop">success</span><span class="op">)</span> <span class="op">{</span>
+        <span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span>
+          <span class="op">[</span><span class="str">'birthtime'</span><span class="op">,</span> <span class="str">'mtime'</span><span class="op">,</span> <span class="str">'ctime'</span><span class="op">]);</span>
+        <span class="fn">save</span><span class="op">();</span>
+      <span class="op">}</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">case</span> <span class="str">'JJFS_EDIT'</span><span class="op">:</span>
+      <span class="kw">const</span> <span class="op">{</span> <span class="prop">search</span><span class="op">,</span> <span class="prop">replace</span> <span class="op">}</span> <span class="op">=</span> <span class="prop">JSON</span><span class="op">.</span><span class="fn">parse</span><span class="op">(</span><span class="prop">content</span><span class="op">);</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="fn">jjfsEdit</span><span class="op">(</span><span class="fn">wsForKey</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="prop">search</span><span class="op">,</span> <span class="prop">replace</span><span class="op">);</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="prop">result</span><span class="op">.</span><span class="prop">success</span><span class="op">)</span> <span class="op">{</span>
+        <span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="op">[</span><span class="str">'mtime'</span><span class="op">,</span> <span class="str">'ctime'</span><span class="op">]);</span>
+        <span class="fn">save</span><span class="op">();</span>
+      <span class="op">}</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">case</span> <span class="str">'JJFS_DELETE'</span><span class="op">:</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="fn">jjfsDelete</span><span class="op">(</span><span class="fn">wsForKey</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">);</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="prop">result</span><span class="op">.</span><span class="prop">success</span><span class="op">)</span> <span class="op">{</span>
+        <span class="fn">removePermissionsUnder</span><span class="op">(</span><span class="fn">fsPerms</span><span class="op">,</span>      <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">);</span>
+        <span class="fn">removeTimestampsUnder</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span>  <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">);</span>
+        <span class="fn">removeSymlinksUnder</span><span class="op">(</span><span class="fn">fsSymlinks</span><span class="op">,</span>      <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">);</span>
+        <span class="fn">removeXattrsUnder</span><span class="op">(</span><span class="fn">fsXattrs</span><span class="op">,</span>          <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">);</span>
+        <span class="fn">save</span><span class="op">();</span>
+      <span class="op">}</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">case</span> <span class="str">'JJFS_MOVE'</span><span class="op">:</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="fn">jjfsMove</span><span class="op">(</span><span class="fn">wsForKey</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="prop">content</span><span class="op">);</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="prop">result</span><span class="op">.</span><span class="prop">success</span><span class="op">)</span> <span class="op">{</span>
+        <span class="fn">removePermissionsUnder</span><span class="op">(</span><span class="fn">fsPerms</span><span class="op">,</span>      <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">);</span>
+        <span class="fn">removeTimestampsUnder</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span>  <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">);</span>
+        <span class="fn">removeSymlinksUnder</span><span class="op">(</span><span class="fn">fsSymlinks</span><span class="op">,</span>      <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">);</span>
+        <span class="fn">removeXattrsUnder</span><span class="op">(</span><span class="fn">fsXattrs</span><span class="op">,</span>          <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">);</span>
+        <span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">content</span><span class="op">,</span> <span class="op">[</span><span class="str">'mtime'</span><span class="op">,</span> <span class="str">'ctime'</span><span class="op">]);</span>
+        <span class="fn">save</span><span class="op">();</span>
+      <span class="op">}</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">case</span> <span class="str">'JJFS_COPY'</span><span class="op">:</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="fn">jjfsCopy</span><span class="op">(</span><span class="fn">wsForKey</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="prop">content</span><span class="op">);</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="prop">result</span><span class="op">.</span><span class="prop">success</span><span class="op">)</span> <span class="op">{</span>
+        <span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">content</span><span class="op">,</span>
+          <span class="op">[</span><span class="str">'birthtime'</span><span class="op">,</span> <span class="str">'mtime'</span><span class="op">,</span> <span class="str">'ctime'</span><span class="op">]);</span>
+        <span class="fn">save</span><span class="op">();</span>
+      <span class="op">}</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">case</span> <span class="str">'JJFS_CHMOD'</span><span class="op">:</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="fn">jjfsChmod</span><span class="op">(</span><span class="fn">fsPerms</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="prop">content</span><span class="op">,</span> <span class="prop">callerId</span><span class="op">);</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="prop">result</span><span class="op">.</span><span class="prop">success</span><span class="op">)</span> <span class="op">{</span> <span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="op">[</span><span class="str">'ctime'</span><span class="op">]);</span> <span class="fn">save</span><span class="op">();</span> <span class="op">}</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">case</span> <span class="str">'JJFS_CHOWN'</span><span class="op">:</span>
+      <span class="kw">const</span> <span class="prop">validOwners</span> <span class="op">=</span> <span class="prop">req</span><span class="op">.</span><span class="prop">account</span><span class="op">.</span><span class="prop">apiKeys</span><span class="op">.</span><span class="fn">map</span><span class="op">(</span><span class="prop">k</span> <span class="op">=&gt;</span> <span class="prop">k</span><span class="op">.</span><span class="prop">key</span><span class="op">);</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="fn">jjfsChown</span><span class="op">(</span><span class="fn">fsPerms</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span>
+        <span class="prop">content</span><span class="op">,</span> <span class="prop">validOwners</span><span class="op">,</span> <span class="prop">callerId</span><span class="op">);</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="prop">result</span><span class="op">.</span><span class="prop">success</span><span class="op">)</span> <span class="op">{</span> <span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="op">[</span><span class="str">'ctime'</span><span class="op">]);</span> <span class="fn">save</span><span class="op">();</span> <span class="op">}</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">case</span> <span class="str">'JJFS_SYMLINK'</span><span class="op">:</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="fn">jjfsSetSymlink</span><span class="op">(</span><span class="fn">fsSymlinks</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="prop">content</span><span class="op">);</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="prop">result</span><span class="op">.</span><span class="prop">success</span><span class="op">)</span> <span class="op">{</span> <span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="op">[</span><span class="str">'ctime'</span><span class="op">]);</span> <span class="fn">save</span><span class="op">();</span> <span class="op">}</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">case</span> <span class="str">'JJFS_GETXATTR'</span><span class="op">:</span>
+      <span class="kw">const</span> <span class="prop">attrs</span> <span class="op">=</span> <span class="fn">getXattrs</span><span class="op">(</span><span class="fn">fsXattrs</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">);</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="op">{</span> <span class="prop">success</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="prop">result</span><span class="op">:</span> <span class="prop">JSON</span><span class="op">.</span><span class="fn">stringify</span><span class="op">(</span><span class="prop">attrs</span><span class="op">)</span> <span class="op">};</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">case</span> <span class="str">'JJFS_SETXATTR'</span><span class="op">:</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="fn">jjfsSetXattr</span><span class="op">(</span><span class="fn">fsXattrs</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span>
+        <span class="kw">typeof</span> <span class="prop">content</span> <span class="op">===</span> <span class="str">'string'</span> <span class="op">?</span> <span class="prop">JSON</span><span class="op">.</span><span class="fn">parse</span><span class="op">(</span><span class="prop">content</span><span class="op">)</span> <span class="op">:</span> <span class="prop">content</span><span class="op">);</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="prop">result</span><span class="op">.</span><span class="prop">success</span><span class="op">)</span> <span class="op">{</span> <span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">filePath</span><span class="op">,</span> <span class="op">[</span><span class="str">'ctime'</span><span class="op">]);</span> <span class="fn">save</span><span class="op">();</span> <span class="op">}</span>
+      <span class="kw">break</span><span class="op">;</span>
+    <span class="kw">default</span><span class="op">:</span>
+      <span class="prop">result</span> <span class="op">=</span> <span class="op">{</span> <span class="prop">success</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span> <span class="prop">result</span><span class="op">:</span> <span class="str">`Unknown operation: <span class="op">${</span><span class="prop">type</span><span class="op">}</span>`</span> <span class="op">};</span>
+  <span class="op">}</span>
+  <span class="prop">res</span><span class="op">.</span><span class="fn">json</span><span class="op">(</span><span class="prop">result</span><span class="op">);</span>
+<span class="op">});</span></pre>
+      </div>
+    </div>
+
+    <!-- TAB: data2l.ink -->
+    <div class="tab-panel" id="gs-cloud">
+      <div class="code-wrap" style="margin-bottom:1.5rem;">
+        <div class="code-header"><span class="code-lang-badge">bash</span><span>using the hosted API</span></div>
+        <pre><span class="cm"># Write a file</span>
+curl -X POST https://data2l.ink/api/fs/execute \
+  -H <span class="str">"X-API-Key: YOUR_KEY"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"type":"JJFS_WRITE","target":"default:/hello.txt","content":"Hello!"}'</span>
+
+<span class="cm"># Read it back</span>
+curl -X POST https://data2l.ink/api/fs/execute \
+  -H <span class="str">"X-API-Key: YOUR_KEY"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"type":"JJFS_READ","target":"default:/hello.txt"}'</span></pre>
+      </div>
+      <div class="card" style="background:rgba(6,182,212,.06); border-color:rgba(6,182,212,.2);">
+        <h3 style="color:var(--cyan); margin-bottom:.75rem;">No server needed</h3>
+        <p style="color:var(--slate-300); margin-bottom:.5rem;">Sign up at <a href="https://data2l.ink" target="_blank" rel="noopener">data2l.ink</a>, generate an API key, start using the API.</p>
+        <ul style="list-style:none; display:flex; flex-direction:column; gap:.4rem; font-size:.875rem; color:var(--slate-400);">
+          <li>Multi-tenant: each API key has its own isolated partition.</li>
+          <li>Automatic <span class="inline-code">default</span> workspace provisioned for every new key.</li>
+          <li>Both requests return <span class="inline-code">{ success: true, result: "..." }</span>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════ AI SYSTEM PROMPT ═══════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Integration</div>
+      <h2>AI System Prompt</h2>
+      <p>Copy this into your model's system prompt to give it JJFS capabilities.</p>
+    </div>
+    <div class="code-wrap" id="system-prompt-wrap">
+      <div class="code-header">
+        <span style="color:var(--slate-300);">system prompt template</span>
+        <button class="copy-btn" id="copy-prompt-btn" onclick="copyPrompt()">Copy</button>
+      </div>
+      <pre id="system-prompt-text" style="white-space:pre; color:var(--slate-300); max-height:320px; overflow-y:auto;">You have access to JJFS (JavaScript Journaling File System) — a persistent virtual
+file system backed by plain JSON. The full jjfs.js library is available to you.
+Embed response actions in your text; the system parses and executes them automatically.
+
+All mutating functions modify their first data argument in-place.
+Core file operations return { success, result }. Permission/xattr mutators (jjfsChmod, jjfsChown, jjfsSetXattr) also include a numeric status. Cascade helpers (remove*Under, touchTimestamps, setPermission) return void.
+All functions are pure JS: no globals, no Node.js required.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA SHAPES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+wsForKey     — { [wsName]: workspaceTree }
+workspace    — nested plain object; leaf strings = file content, nested objects = dirs
+fsPerms      — { [email]: { "wsName:/path": { mode, owner } } }
+fsTimestamps — { [email]: { "wsName:/path": { birthtime, mtime, ctime } } }
+fsSymlinks   — { [email]: { "wsName:/path": "/target/path" } }
+fsXattrs     — { [email]: { "wsName:/path": { "user.key": "value" } } }
+
+Paths are POSIX-style. Leading slash is optional (/src/app.js = src/app.js).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 1 — CORE NAVIGATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+jjfsNavigate(workspace, pathStr)
+  → { parent, name } | { error }
+  Walk a workspace tree to the parent node and final segment for any POSIX path.
+
+parseTarget(target, forRead?)
+  → { wsName, filePath } | { wsName, filePath, startLine, endLine } | { error }
+  Parse "wsName:/path" target strings (or "wsName:/path:start:end" when forRead=true).
+
+countFiles(node)
+  → number
+  Count all leaf files (string values) under any workspace tree node.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 2 — FILE OPERATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+jjfsRead(wsForKey, wsName, filePath, startLine?, endLine?)
+  → { success, result }
+  Read a file or list a directory. Path "/" or "" returns workspace root listing.
+  Directory entries: subdirs shown with trailing "/". Line range is 1-based inclusive.
+
+jjfsWrite(wsForKey, wsName, filePath, content)
+  → { success, result }
+  Create or overwrite a file. Creates all intermediate directories automatically.
+  content may be a string (file) or object (directory subtree).
+
+jjfsEdit(wsForKey, wsName, filePath, searchStr, replaceStr)
+  → { success, result }
+  Surgical search-and-replace within a file.
+  searchStr must appear EXACTLY ONCE — errors if 0 or 2+ matches.
+  Pass "" as replaceStr to delete the matched section.
+
+jjfsDelete(wsForKey, wsName, filePath)
+  → { success, result }
+  Remove a file or directory (recursive). Cannot delete workspace root.
+
+jjfsMove(wsForKey, wsName, srcPath, destPath)
+  → { success, result }
+  Move a file or directory. Creates dest parent dirs automatically.
+
+jjfsCopy(wsForKey, wsName, srcPath, destPath)
+  → { success, result }
+  Deep-clone a file or directory to a new path.
+
+jjfsWriteBinary(wsForKey, wsName, filePath, bytes)
+  → { success, result }
+  Write binary data (Uint8Array, Buffer, or 0–255 array-like) to a file.
+  Encodes as base64 automatically. Use for images, fonts, compiled assets, etc.
+
+jjfsReadBinary(wsForKey, wsName, filePath)
+  → { success, result: Buffer | Uint8Array }
+  Read a binary file written with jjfsWriteBinary. Decodes base64 back to bytes.
+  Returns a Buffer in Node.js or a Uint8Array in the browser.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 3 — PERMISSIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mode values (accepted by all permission functions):
+  "ro"            read-only for everyone
+  "rw"            read-write for everyone (default — no stored entry)
+  "644" / "0644"  3- or 4-digit octal string (owner / group / other)
+  "1755"          leading digit encodes sticky bit (1 = sticky)
+  { key: "ro"|"rw"|"[0-7]", "*": ... }  per-caller ACL object; "*" = fallback
+
+normalizePath(p)
+  → "/normalized/path"
+  Resolve "." and ".." segments; always returns an absolute path string.
+
+isValidMode(mode)
+  → boolean
+
+parseOctalBits(digit)
+  → { read, write, execute }
+  Decode one octal digit into rwx booleans.
+
+getStickyBit(mode)
+  → boolean
+  True when mode is a 4-digit octal string with the sticky bit set (1xxx).
+
+getEffectivePermission(fsPerms, email, wsName, filePath)
+  → { mode, owner, effectivePath, inherited } | null
+  Walk from filePath up to "/" and return the most-specific matching entry, or null.
+
+getPermBitsForKey(perm, callerId)
+  → { read, write, execute }
+  Decode rwx bits for a specific callerId from a permission entry.
+
+checkWriteAccess(fsPerms, email, wsName, filePath, callerId)
+  → { allowed: true } | { allowed: false, error }
+  callerId = null (session auth) always passes — no access check performed.
+
+checkReadAccess(fsPerms, email, wsName, filePath, callerId)
+  → { allowed: true } | { allowed: false, error }
+  callerId = null always passes.
+
+checkOwnerAccess(fsPerms, email, wsName, filePath, callerId)
+  → { allowed: true } | { allowed: false, error }
+  Checks exact path only (not inherited). Paths with no owner allow anyone.
+  callerId = null always passes.
+
+checkStickyBit(fsPerms, email, wsName, filePath, callerId)
+  → { allowed: true } | { allowed: false, error }
+  When a directory has the sticky bit set, only the file or directory owner
+  may delete or rename files inside it.
+  callerId = null always passes.
+
+setPermission(fsPerms, email, wsName, filePath, updates)
+  → void  (mutates fsPerms)
+  Upsert a permission entry. String mode replaces entirely; object mode merges
+  (null ACL values remove individual keys). Removes the entry when it is a no-op.
+
+removePermissionsUnder(fsPerms, email, wsName, filePath)
+  → void
+  Remove all permission entries for filePath and every path under it.
+  Must be called after jjfsDelete or jjfsMove.
+
+jjfsChmod(fsPerms, email, wsName, filePath, mode, callerId)
+  → { success, status, result }
+  Validate mode and check owner access, then call setPermission.
+  Does NOT persist — caller must save fsPerms and update ctime.
+
+jjfsChown(fsPerms, email, wsName, filePath, owner, validOwners, callerId)
+  → { success, status, result }
+  owner must be null or a string/array from validOwners.
+  Does NOT persist — caller must save fsPerms and update ctime.
+
+hashPermForResponse(perm, hashFn)
+  → hashed perm object | null
+  Replace raw owner/ACL callerId strings with opaque tokens via hashFn before
+  returning permission data to API clients. Pass (k => k) to skip hashing.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 4 — TIMESTAMPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Timestamps are ISO-8601 strings stored in fsTimestamps (not in the workspace tree).
+  birthtime — set once on creation
+  mtime     — updated on content change (write, edit)
+  ctime     — updated on any metadata change (chmod, chown, rename, xattr)
+
+touchTimestamps(fsTimestamps, email, wsName, filePath, fields)
+  → void  (mutates fsTimestamps)
+  Set fields (array of "birthtime"|"mtime"|"ctime") to the current ISO timestamp.
+
+getTimestamps(fsTimestamps, email, wsName, filePath)
+  → { birthtime, mtime, ctime } | null
+
+removeTimestampsUnder(fsTimestamps, email, wsName, filePath)
+  → void
+  Remove all timestamp entries for filePath and every path under it.
+  Must be called after jjfsDelete or jjfsMove.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 5 — SYMBOLIC LINKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Symlinks are stored in fsSymlinks (not in the workspace tree).
+Target is an absolute path within the same workspace.
+Max chain depth: 8 hops (Linux MAXSYMLINKS default).
+
+resolveSymlink(fsSymlinks, email, wsName, filePath, depth?)
+  → { path } | { error }
+  Follow a symlink chain to its final real path, or error if broken or too deep.
+
+getSymlinksInDir(fsSymlinks, email, wsName, dirPath)
+  → { [name]: "/target/path" }
+  Return all symlinks that are direct children of dirPath (one level only).
+
+removeSymlinksUnder(fsSymlinks, email, wsName, filePath)
+  → void
+  Remove all symlink entries for filePath and every path under it.
+  Must be called after jjfsDelete or jjfsMove.
+
+jjfsSetSymlink(fsSymlinks, email, wsName, filePath, target)
+  → { success, result }
+  Create a symlink at filePath pointing to target (absolute path).
+  Pass null or "" as target to remove the symlink.
+  Does NOT persist — caller must save fsSymlinks and update ctime.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSYSTEM 6 — EXTENDED ATTRIBUTES (xattrs)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Only "user.*" and "trusted.*" namespaces are supported. All values are strings.
+Valid name regex: /^(user|trusted)\.[a-zA-Z0-9._-]+$/  (exported as XATTR_NAME_RE)
+
+getXattrs(fsXattrs, email, wsName, filePath)
+  → { "user.key": "value", ... }  (empty object if none set)
+
+removeXattrsUnder(fsXattrs, email, wsName, filePath)
+  → void
+  Remove all xattr entries for filePath and every path under it.
+  Must be called after jjfsDelete or jjfsMove.
+
+jjfsSetXattr(fsXattrs, email, wsName, filePath, op)
+  → { success, status, result }
+  op = { set?: { "user.key": "value", ... }, remove?: string | string[] }
+  set adds/updates keys; remove deletes keys by name. Validates against XATTR_NAME_RE.
+  Does NOT persist — caller must save fsXattrs and update ctime.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESPONSE ACTIONS (embed in your response text to operate on files)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LIST workspace root or a directory:
+  [ACTION:JJFS_READ]workspace:/[/ACTION:JJFS_READ]
+  [ACTION:JJFS_READ]workspace:/some/dir[/ACTION:JJFS_READ]
+
+READ a file:
+  [ACTION:JJFS_READ]workspace:/path/to/file.txt[/ACTION:JJFS_READ]
+
+READ a line range (1-based, inclusive):
+  [ACTION:JJFS_READ]workspace:/path/to/file.txt:10:40[/ACTION:JJFS_READ]
+
+WRITE (create or overwrite) a file:
+  [ACTION:JJFS_WRITE:workspace:/path/to/file.txt:full file content here[/ACTION]
+
+EDIT (surgical search-and-replace):
+  [ACTION:JJFS_EDIT:workspace:/path/to/file.txt:{"search":"exact text","replace":"new text"}[/ACTION]
+
+DELETE a file or directory:
+  [ACTION:JJFS_DELETE:workspace:/path[/ACTION]
+
+MOVE a file or directory:
+  [ACTION:JJFS_MOVE:workspace:/old/path:/new/path[/ACTION]
+
+COPY a file or directory:
+  [ACTION:JJFS_COPY:workspace:/src/path:/dest/path[/ACTION]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. NEVER paste file content in your response prose. Use JJFS_WRITE or JJFS_EDIT.
+2. PREFER JJFS_EDIT over JJFS_WRITE for existing files.
+3. Always READ before EDIT — wait for the result, then copy the text exactly.
+4. JJFS_EDIT: "search" must appear exactly once. Include enough surrounding
+   context to be unique. Whitespace must match exactly. Use "" to delete.
+5. After any delete or move, call removePermissionsUnder, removeTimestampsUnder,
+   removeSymlinksUnder, and removeXattrsUnder for the affected path to keep metadata in sync.
+6. Do not output code blocks in prose. All code belongs in JJFS files.</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ API REFERENCE ═══════════════ -->
+<section class="section section-alt" id="api">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Reference</div>
+      <h2>API Reference</h2>
+      <p>37 exports across 6 subsystems</p>
+    </div>
+
+    <div class="tabs-nav" id="api-tabs-nav">
+      <button class="tab-btn active" data-tab="api-core">Core</button>
+      <button class="tab-btn" data-tab="api-nav">Nav &amp; Utils</button>
+      <button class="tab-btn" data-tab="api-perms">Permissions</button>
+      <button class="tab-btn" data-tab="api-ts">Timestamps</button>
+      <button class="tab-btn" data-tab="api-sym">Symlinks</button>
+      <button class="tab-btn" data-tab="api-xattr">Xattrs &amp; Serialization</button>
+    </div>
+
+    <!-- TAB: Core -->
+    <div class="tab-panel active" id="api-core">
+      <div class="table-wrap" style="margin-bottom:1.5rem;">
+        <table class="api-table">
+          <thead><tr><th>Function</th><th>Signature</th><th>Returns</th></tr></thead>
+          <tbody>
+            <tr><td class="fn-name">jjfsRead</td><td class="fn-sig">(wsForKey, wsName, filePath, startLine?, endLine?)</td><td class="fn-ret">{ success, result }</td></tr>
+            <tr><td class="fn-name">jjfsWrite</td><td class="fn-sig">(wsForKey, wsName, filePath, content)</td><td class="fn-ret">{ success, result }</td></tr>
+            <tr><td class="fn-name">jjfsEdit</td><td class="fn-sig">(wsForKey, wsName, filePath, searchStr, replaceStr)</td><td class="fn-ret">{ success, result }</td></tr>
+            <tr><td class="fn-name">jjfsDelete</td><td class="fn-sig">(wsForKey, wsName, filePath)</td><td class="fn-ret">{ success, result }</td></tr>
+            <tr><td class="fn-name">jjfsMove</td><td class="fn-sig">(wsForKey, wsName, srcPath, destPath)</td><td class="fn-ret">{ success, result }</td></tr>
+            <tr><td class="fn-name">jjfsCopy</td><td class="fn-sig">(wsForKey, wsName, srcPath, destPath)</td><td class="fn-ret">{ success, result }</td></tr>
+            <tr><td class="fn-name">jjfsWriteBinary</td><td class="fn-sig">(wsForKey, wsName, filePath, bytes)</td><td class="fn-ret">{ success, result }</td></tr>
+            <tr><td class="fn-name">jjfsReadBinary</td><td class="fn-sig">(wsForKey, wsName, filePath)</td><td class="fn-ret">{ success, result: Buffer | Uint8Array }</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="concept-box">
+        <h4>Behavior notes</h4>
+        <ul style="display:flex; flex-direction:column; gap:.5rem; list-style:none;">
+          <li><span style="color:var(--cyan); font-family:var(--font-mono); margin-right:.5rem;">jjfsWrite</span> creates intermediate directories automatically. Returns <span class="inline-code">'Created:...'</span> or <span class="inline-code">'Overwrote:...'</span>.</li>
+          <li><span style="color:var(--cyan); font-family:var(--font-mono); margin-right:.5rem;">jjfsEdit</span> searchStr must appear <strong>exactly once</strong>. Fails safely — nothing is changed if the search text is not found or is ambiguous.</li>
+          <li><span style="color:var(--cyan); font-family:var(--font-mono); margin-right:.5rem;">jjfsDelete</span> cannot delete a workspace root. After delete, run the cascade helpers on all four metadata stores.</li>
+          <li><span style="color:var(--cyan); font-family:var(--font-mono); margin-right:.5rem;">jjfsWriteBinary</span> accepts a Uint8Array, Buffer, or any 0–255 array-like. Stores content as a base64 string. <span class="inline-code">jjfsReadBinary</span> decodes it back — returns a <span class="inline-code">Buffer</span> in Node.js or a <span class="inline-code">Uint8Array</span> in the browser.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- TAB: Nav & Utils -->
+    <div class="tab-panel" id="api-nav">
+      <div class="table-wrap" style="margin-bottom:1.5rem;">
+        <table class="api-table">
+          <thead><tr><th>Function</th><th>Signature</th><th>Returns</th></tr></thead>
+          <tbody>
+            <tr><td class="fn-name">jjfsNavigate</td><td class="fn-sig">(workspace, pathStr)</td><td class="fn-ret">{ parent, name } or { error }</td></tr>
+            <tr><td class="fn-name">parseTarget</td><td class="fn-sig">(target, forRead?)</td><td class="fn-ret">{ wsName, filePath, startLine?, endLine? } or { error }</td></tr>
+            <tr><td class="fn-name">countFiles</td><td class="fn-sig">(node)</td><td class="fn-ret">number</td></tr>
+            <tr><td class="fn-name">normalizePath</td><td class="fn-sig">(p)</td><td class="fn-ret">string (always starts with /)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="concept-box">
+        <h4>Note on parseTarget</h4>
+        <p>Parses <span class="inline-code">"wsName:/path"</span> target strings as used by the AI action format. Pass <span class="inline-code">forRead=true</span> to also parse a <span class="inline-code">":startLine:endLine"</span> suffix for range reads.</p>
+      </div>
+    </div>
+
+    <!-- TAB: Permissions -->
+    <div class="tab-panel" id="api-perms">
+      <div class="concept-box" style="margin-bottom:1.25rem;">
+        <h4>Permission concepts</h4>
+        <p style="margin-bottom:.75rem;">Permission entries have shape: <span class="inline-code">{ mode, owner }</span></p>
+        <table class="mode-table">
+          <tr><td>"rw"</td><td>Everyone can read and write (default — no entry needed)</td></tr>
+          <tr><td>"ro"</td><td>Everyone can only read</td></tr>
+          <tr><td>"644"</td><td>Owner: read+write, others: read-only</td></tr>
+          <tr><td>"755"</td><td>Owner: read+write+execute, others: read+execute</td></tr>
+          <tr><td>"1755"</td><td>Sticky bit + 755: only owner can delete files in this dir</td></tr>
+          <tr><td>{ "keyA": "ro", "*": "rw" }</td><td>ACL: keyA read-only, everyone else read+write</td></tr>
+        </table>
+        <p style="margin-top:.75rem; color:var(--slate-400); font-size:.85rem;"><strong style="color:var(--slate-300);">callerId</strong> is an opaque string (typically an API key). Pass <span class="inline-code">null</span> to bypass all checks — trusted server-side callers always pass.</p>
+        <p style="margin-top:.5rem; color:var(--slate-400); font-size:.85rem;">Permissions inherit down the tree. The most specific ancestor wins.</p>
+      </div>
+      <div class="table-wrap">
+        <table class="api-table">
+          <thead><tr><th>Function</th><th>Signature</th><th>Returns</th></tr></thead>
+          <tbody>
+            <tr><td class="fn-name">jjfsChmod</td><td class="fn-sig">(fsPerms, email, wsName, filePath, mode, callerId)</td><td class="fn-ret">{ success, status, result }</td></tr>
+            <tr><td class="fn-name">jjfsChown</td><td class="fn-sig">(fsPerms, email, wsName, filePath, owner, validOwners, callerId)</td><td class="fn-ret">{ success, status, result }</td></tr>
+            <tr><td class="fn-name">getEffectivePermission</td><td class="fn-sig">(fsPerms, email, wsName, filePath)</td><td class="fn-ret">{ mode, owner, effectivePath, inherited } or null</td></tr>
+            <tr><td class="fn-name">getPermBitsForKey</td><td class="fn-sig">(perm, callerId)</td><td class="fn-ret">{ read, write, execute }</td></tr>
+            <tr><td class="fn-name">checkReadAccess</td><td class="fn-sig">(fsPerms, email, wsName, filePath, callerId)</td><td class="fn-ret">{ allowed } or { allowed, error }</td></tr>
+            <tr><td class="fn-name">checkWriteAccess</td><td class="fn-sig">(fsPerms, email, wsName, filePath, callerId)</td><td class="fn-ret">{ allowed } or { allowed, error }</td></tr>
+            <tr><td class="fn-name">checkOwnerAccess</td><td class="fn-sig">(fsPerms, email, wsName, filePath, callerId)</td><td class="fn-ret">{ allowed } or { allowed, error }</td></tr>
+            <tr><td class="fn-name">checkStickyBit</td><td class="fn-sig">(fsPerms, email, wsName, filePath, callerId)</td><td class="fn-ret">{ allowed } or { allowed, error }</td></tr>
+            <tr><td class="fn-name">setPermission</td><td class="fn-sig">(fsPerms, email, wsName, filePath, updates)</td><td class="fn-ret">void</td></tr>
+            <tr><td class="fn-name">removePermissionsUnder</td><td class="fn-sig">(fsPerms, email, wsName, filePath)</td><td class="fn-ret">void</td></tr>
+            <tr><td class="fn-name">isValidMode</td><td class="fn-sig">(mode)</td><td class="fn-ret">boolean</td></tr>
+            <tr><td class="fn-name">parseOctalBits</td><td class="fn-sig">(digit)</td><td class="fn-ret">{ read, write, execute }</td></tr>
+            <tr><td class="fn-name">getStickyBit</td><td class="fn-sig">(mode)</td><td class="fn-ret">boolean</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: Timestamps -->
+    <div class="tab-panel" id="api-ts">
+      <div class="concept-box" style="margin-bottom:1.25rem;">
+        <h4>Timestamp concepts</h4>
+        <p>POSIX-style timestamps: <strong style="color:var(--slate-200);">birthtime</strong> (first creation), <strong style="color:var(--slate-200);">mtime</strong> (content change), <strong style="color:var(--slate-200);">ctime</strong> (any metadata change). All timestamps are ISO-8601 strings.</p>
+      </div>
+      <div class="table-wrap" style="margin-bottom:1.25rem;">
+        <table class="api-table">
+          <thead><tr><th>Function</th><th>Signature</th><th>Returns</th></tr></thead>
+          <tbody>
+            <tr><td class="fn-name">touchTimestamps</td><td class="fn-sig">(fsTimestamps, email, wsName, filePath, fields)</td><td class="fn-ret">void</td></tr>
+            <tr><td class="fn-name">getTimestamps</td><td class="fn-sig">(fsTimestamps, email, wsName, filePath)</td><td class="fn-ret">{ birthtime, mtime, ctime } or null</td></tr>
+            <tr><td class="fn-name">removeTimestampsUnder</td><td class="fn-sig">(fsTimestamps, email, wsName, filePath)</td><td class="fn-ret">void</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="concept-box">
+        <h4>When to use each field</h4>
+        <p><span class="inline-code">fields</span> is an array of <span class="inline-code">'birthtime'</span>, <span class="inline-code">'mtime'</span>, <span class="inline-code">'ctime'</span>.</p>
+        <ul style="list-style:none; margin-top:.6rem; display:flex; flex-direction:column; gap:.35rem; font-size:.85rem;">
+          <li><span style="color:var(--cyan);">Create</span> — set all three: birthtime, mtime, ctime</li>
+          <li><span style="color:var(--cyan);">Write / Edit</span> — set mtime + ctime</li>
+          <li><span style="color:var(--cyan);">chmod / chown / xattr</span> — set ctime only</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- TAB: Symlinks -->
+    <div class="tab-panel" id="api-sym">
+      <div class="concept-box" style="margin-bottom:1.25rem;">
+        <h4>Symlink concepts</h4>
+        <p>Symlinks are stored as metadata alongside the tree — the JJFS tree itself is never modified. A symlink maps one path to a target within the same workspace. Chains are followed up to 8 hops (Linux MAXSYMLINKS).</p>
+      </div>
+      <div class="table-wrap" style="margin-bottom:1.25rem;">
+        <table class="api-table">
+          <thead><tr><th>Function</th><th>Signature</th><th>Returns</th></tr></thead>
+          <tbody>
+            <tr><td class="fn-name">jjfsSetSymlink</td><td class="fn-sig">(fsSymlinks, email, wsName, filePath, target)</td><td class="fn-ret">{ success, result }</td></tr>
+            <tr><td class="fn-name">resolveSymlink</td><td class="fn-sig">(fsSymlinks, email, wsName, filePath, depth?)</td><td class="fn-ret">{ path } or { error }</td></tr>
+            <tr><td class="fn-name">getSymlinksInDir</td><td class="fn-sig">(fsSymlinks, email, wsName, dirPath)</td><td class="fn-ret">{ name: "/target", ... }</td></tr>
+            <tr><td class="fn-name">removeSymlinksUnder</td><td class="fn-sig">(fsSymlinks, email, wsName, filePath)</td><td class="fn-ret">void</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note"><strong>Note:</strong> Pass <span class="inline-code">null</span> or <span class="inline-code">''</span> as target to <span class="inline-code">jjfsSetSymlink</span> to remove a symlink.</div>
+    </div>
+
+    <!-- TAB: Xattrs & Serialization -->
+    <div class="tab-panel" id="api-xattr">
+      <div class="concept-box" style="margin-bottom:1.25rem;">
+        <h4>Extended attribute concepts</h4>
+        <p>Extended attributes are arbitrary key-value string pairs. Names must match <span class="inline-code">user.*</span> or <span class="inline-code">trusted.*</span> (alphanumeric, <span class="inline-code">.</span>, <span class="inline-code">_</span>, <span class="inline-code">-</span>).</p>
+      </div>
+      <div class="table-wrap" style="margin-bottom:1.25rem;">
+        <table class="api-table">
+          <thead><tr><th>Function / Constant</th><th>Signature</th><th>Returns</th></tr></thead>
+          <tbody>
+            <tr><td class="fn-name">XATTR_NAME_RE</td><td class="fn-sig">—</td><td class="fn-ret">RegExp (/^(user|trusted)\.[a-zA-Z0-9._-]+$/)</td></tr>
+            <tr><td class="fn-name">jjfsSetXattr</td><td class="fn-sig">(fsXattrs, email, wsName, filePath, op)</td><td class="fn-ret">{ success, status, result }</td></tr>
+            <tr><td class="fn-name">getXattrs</td><td class="fn-sig">(fsXattrs, email, wsName, filePath)</td><td class="fn-ret">{ "user.key": "value", ... }</td></tr>
+            <tr><td class="fn-name">removeXattrsUnder</td><td class="fn-sig">(fsXattrs, email, wsName, filePath)</td><td class="fn-ret">void</td></tr>
+            <tr><td class="fn-name">hashPermForResponse</td><td class="fn-sig">(perm, hashFn)</td><td class="fn-ret">Safe permission object or null</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="concept-box">
+        <h4>hashPermForResponse</h4>
+        <p>Replaces raw API key values with opaque tokens via <span class="inline-code">hashFn</span> before sending permission data to clients. Use SHA-256 in Node.js; SubtleCrypto in browser; pass <span class="inline-code">k =&gt; k</span> to skip. Returns <span class="inline-code">null</span> when <span class="inline-code">perm</span> is null.</p>
+        <p style="margin-top:.5rem; color:var(--slate-500); font-size:.83rem;">Callers identify themselves by computing <span class="inline-code">hashFn(theirKey)</span> and matching against hashed values in the response.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ CASCADE PATTERN ═══════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Pattern</div>
+      <h2>Cascade Pattern</h2>
+      <p>Any delete or move must clean up all four metadata stores.</p>
+    </div>
+    <div class="code-wrap" style="margin-bottom:1.25rem;">
+      <div class="code-header"><span class="code-lang-badge">JS</span><span>after jjfsDelete or source side of jjfsMove</span></div>
+      <pre><span class="fn">removePermissionsUnder</span><span class="op">(</span><span class="fn">fsPerms</span><span class="op">,</span>      <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">path</span><span class="op">);</span>
+<span class="fn">removeTimestampsUnder</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span>  <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">path</span><span class="op">);</span>
+<span class="fn">removeSymlinksUnder</span><span class="op">(</span><span class="fn">fsSymlinks</span><span class="op">,</span>      <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">path</span><span class="op">);</span>
+<span class="fn">removeXattrsUnder</span><span class="op">(</span><span class="fn">fsXattrs</span><span class="op">,</span>          <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">path</span><span class="op">);</span></pre>
+    </div>
+    <p style="color:var(--slate-400); margin-bottom:1rem;">Then set timestamps on the destination:</p>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang-badge">JS</span><span>destination timestamps</span></div>
+      <pre><span class="cm">// After jjfsMove — destination gets mtime + ctime (not a new birthtime)</span>
+<span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">destPath</span><span class="op">,</span> <span class="op">[</span><span class="str">'mtime'</span><span class="op">,</span> <span class="str">'ctime'</span><span class="op">]);</span>
+
+<span class="cm">// After jjfsCopy — destination is brand new, gets all three</span>
+<span class="fn">touchTimestamps</span><span class="op">(</span><span class="fn">fsTimestamps</span><span class="op">,</span> <span class="prop">email</span><span class="op">,</span> <span class="prop">wsName</span><span class="op">,</span> <span class="prop">destPath</span><span class="op">,</span> <span class="op">[</span><span class="str">'birthtime'</span><span class="op">,</span> <span class="str">'mtime'</span><span class="op">,</span> <span class="str">'ctime'</span><span class="op">]);</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ HTTP API ═══════════════ -->
+<section class="section section-alt" id="http-api">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">HTTP</div>
+      <h2>HTTP API Reference</h2>
+    </div>
+
+    <h3 style="margin-bottom:1rem; font-size:1.1rem;">POST /api/fs/execute</h3>
+    <div class="table-wrap" style="margin-bottom:2.5rem;">
+      <table class="http-table">
+        <thead><tr><th>type</th><th>target</th><th>content</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_READ</span></td>
+            <td><span class="http-endpoint">ws:/path</span> or <span class="http-endpoint">ws:/path:start:end</span></td>
+            <td class="not-used">not used</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_WRITE</span></td>
+            <td><span class="http-endpoint">ws:/path</span></td>
+            <td>file content string</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_EDIT</span></td>
+            <td><span class="http-endpoint">ws:/path</span></td>
+            <td><span class="inline-code">{"search":"...","replace":"..."}</span></td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_DELETE</span></td>
+            <td><span class="http-endpoint">ws:/path</span></td>
+            <td class="not-used">not used</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_MOVE</span></td>
+            <td><span class="http-endpoint">ws:/srcpath</span></td>
+            <td>/destpath string</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_COPY</span></td>
+            <td><span class="http-endpoint">ws:/srcpath</span></td>
+            <td>/destpath string</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_CHMOD</span></td>
+            <td><span class="http-endpoint">ws:/path</span></td>
+            <td>mode string or ACL object</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_CHOWN</span></td>
+            <td><span class="http-endpoint">ws:/path</span></td>
+            <td>caller ID, array of IDs, or null</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_SYMLINK</span></td>
+            <td><span class="http-endpoint">ws:/path</span></td>
+            <td>target path string</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_GETXATTR</span></td>
+            <td><span class="http-endpoint">ws:/path</span></td>
+            <td class="not-used">not used</td>
+          </tr>
+          <tr>
+            <td><span style="color:var(--cyan); font-family:var(--font-mono); font-size:.83rem;">JJFS_SETXATTR</span></td>
+            <td><span class="http-endpoint">ws:/path</span></td>
+            <td><span class="inline-code">{"set":{...},"remove":[...]}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-bottom:1rem; font-size:1.1rem;">Workspace Management</h3>
+    <div class="table-wrap" style="margin-bottom:2.5rem;">
+      <table class="http-table">
+        <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="http-method get">GET</span></td>
+            <td><span class="http-endpoint">/api/fs/workspaces</span></td>
+            <td style="color:var(--slate-300); font-size:.85rem;">Returns <span class="inline-code">{ workspaces: [{ name, fileCount }], count }</span></td>
+          </tr>
+          <tr>
+            <td><span class="http-method post">POST</span></td>
+            <td><span class="http-endpoint">/api/fs/workspaces</span></td>
+            <td style="color:var(--slate-300); font-size:.85rem;">Body: <span class="inline-code">{ "name": "myworkspace" }</span> &rarr; <span class="inline-code">{ success: true, name }</span></td>
+          </tr>
+          <tr>
+            <td><span class="http-method del">DELETE</span></td>
+            <td><span class="http-endpoint">/api/fs/workspaces/:name</span></td>
+            <td style="color:var(--slate-300); font-size:.85rem;">Cannot delete "default" &rarr; <span class="inline-code">{ success: true }</span></td>
+          </tr>
+          <tr>
+            <td><span class="http-method get">GET</span></td>
+            <td><span class="http-endpoint">/api/fs/browse?workspace=name&amp;path=/dir[&amp;all=1]</span></td>
+            <td style="color:var(--slate-300); font-size:.85rem;">Returns <span class="inline-code">{ success, workspace, path, type, entries|content, timestamps, permission, xattrs }</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-bottom:1rem; font-size:1.1rem;">REST File Endpoints</h3>
+    <div class="table-wrap" style="margin-bottom:1.5rem;">
+      <table class="http-table">
+        <thead><tr><th>Method</th><th>Endpoint</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="http-method get">GET</span></td>
+            <td><span class="http-endpoint">/api/fs/:workspace/*path</span></td>
+            <td style="color:var(--slate-400); font-size:.83rem;">Read file or list directory. Query: <span class="inline-code">?start=N&amp;end=M</span>, <span class="inline-code">?nofollow=1</span>, <span class="inline-code">?all=1</span></td>
+          </tr>
+          <tr>
+            <td><span class="http-method put">PUT</span></td>
+            <td><span class="http-endpoint">/api/fs/:workspace/*path</span></td>
+            <td style="color:var(--slate-400); font-size:.83rem;">Write file (raw body)</td>
+          </tr>
+          <tr>
+            <td><span class="http-method del">DELETE</span></td>
+            <td><span class="http-endpoint">/api/fs/:workspace/*path</span></td>
+            <td style="color:var(--slate-400); font-size:.83rem;">Delete file or directory</td>
+          </tr>
+          <tr>
+            <td><span class="http-method post">POST</span></td>
+            <td><span class="http-endpoint">/api/fs/:workspace/*path</span></td>
+            <td style="color:var(--slate-400); font-size:.83rem;">Move or copy. Body: <span class="inline-code">{ "op": "move"|"copy", "destination": "/path" }</span></td>
+          </tr>
+          <tr>
+            <td><span class="http-method patch">PATCH</span></td>
+            <td><span class="http-endpoint">/api/fs/:workspace/*path</span></td>
+            <td style="color:var(--slate-400); font-size:.83rem;">
+              One of:<br>
+              <span class="inline-code">{ "search":"...","replace":"..." }</span><br>
+              <span class="inline-code">{ "chmod": mode }</span><br>
+              <span class="inline-code">{ "chown": owner }</span><br>
+              <span class="inline-code">{ "symlink": "/target"|null }</span><br>
+              <span class="inline-code">{ "xattr": { "set":{...}, "remove":[...] } }</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="concept-box">
+      <h4>Response headers on GET (file)</h4>
+      <table class="mode-table" style="margin-top:.25rem;">
+        <tr><td>X-JJFS-Permission</td><td>JSON effective permission (owner IDs are SHA-256 hashed)</td></tr>
+        <tr><td>X-JJFS-Mode</td><td>The raw mode string</td></tr>
+        <tr><td>X-JJFS-Owner</td><td>Comma-separated SHA-256 hashes of owner IDs</td></tr>
+        <tr><td>X-JJFS-Timestamps</td><td>JSON <span class="inline-code">{ birthtime, mtime, ctime }</span></td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FRONTEND ACTION PARSER ═══════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Frontend</div>
+      <h2>Frontend Action Parser</h2>
+      <p>Parse JJFS action tags from the AI response stream and call /api/fs/execute for each one.</p>
+    </div>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang-badge">JS</span><span>action parser + execute helper</span></div>
+      <pre><span class="kw">const</span> <span class="fn">ACTION_TYPES</span> <span class="op">=</span> <span class="str">'JJFS_WRITE|JJFS_EDIT|JJFS_DELETE|JJFS_MOVE|JJFS_COPY'</span><span class="op">;</span>
+<span class="kw">const</span> <span class="fn">ACTION_RE</span> <span class="op">=</span> <span class="kw">new</span> <span class="fn">RegExp</span><span class="op">(</span>
+  <span class="str">`\\[ACTION:(${</span><span class="fn">ACTION_TYPES</span><span class="str">}):[\\s\\S]+?\\[/ACTION\\]`</span><span class="op">,</span> <span class="str">'g'</span>
+<span class="op">);</span>
+<span class="kw">const</span> <span class="fn">READ_RE</span> <span class="op">=</span> <span class="op">/</span>\[ACTION:JJFS_READ\]<span class="op">(</span>[\s\S]+?<span class="op">)</span>\[\/ACTION:JJFS_READ\]<span class="op">/</span>g<span class="op">;</span>
+
+<span class="kw">function</span> <span class="fn">parseActions</span><span class="op">(</span><span class="prop">text</span><span class="op">)</span> <span class="op">{</span>
+  <span class="kw">const</span> <span class="prop">actions</span> <span class="op">=</span> <span class="op">[];</span>
+  <span class="kw">let</span> <span class="prop">m</span><span class="op">;</span>
+  <span class="kw">while</span> <span class="op">((</span><span class="prop">m</span> <span class="op">=</span> <span class="fn">READ_RE</span><span class="op">.</span><span class="fn">exec</span><span class="op">(</span><span class="prop">text</span><span class="op">))</span> <span class="op">!==</span> <span class="kw">null</span><span class="op">)</span>
+    <span class="prop">actions</span><span class="op">.</span><span class="fn">push</span><span class="op">({</span> <span class="prop">type</span><span class="op">:</span> <span class="str">'JJFS_READ'</span><span class="op">,</span> <span class="prop">target</span><span class="op">:</span> <span class="prop">m</span><span class="op">[</span><span class="num">1</span><span class="op">].</span><span class="fn">trim</span><span class="op">(),</span> <span class="prop">content</span><span class="op">:</span> <span class="kw">null</span> <span class="op">});</span>
+  <span class="kw">while</span> <span class="op">((</span><span class="prop">m</span> <span class="op">=</span> <span class="fn">ACTION_RE</span><span class="op">.</span><span class="fn">exec</span><span class="op">(</span><span class="prop">text</span><span class="op">))</span> <span class="op">!==</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span>
+    <span class="kw">const</span> <span class="op">[,</span> <span class="prop">type</span><span class="op">,</span> <span class="prop">rest</span><span class="op">]</span> <span class="op">=</span> <span class="prop">m</span><span class="op">;</span>
+    <span class="kw">if</span> <span class="op">(</span><span class="prop">type</span> <span class="op">===</span> <span class="str">'JJFS_EDIT'</span><span class="op">)</span> <span class="op">{</span>
+      <span class="kw">const</span> <span class="prop">jsonStart</span> <span class="op">=</span> <span class="prop">rest</span><span class="op">.</span><span class="fn">lastIndexOf</span><span class="op">(</span><span class="str">':{'</span><span class="op">);</span>
+      <span class="kw">if</span> <span class="op">(</span><span class="prop">jsonStart</span> <span class="op">===</span> <span class="op">-</span><span class="num">1</span><span class="op">)</span> <span class="kw">continue</span><span class="op">;</span>
+      <span class="prop">actions</span><span class="op">.</span><span class="fn">push</span><span class="op">({</span> <span class="prop">type</span><span class="op">,</span> <span class="prop">target</span><span class="op">:</span> <span class="prop">rest</span><span class="op">.</span><span class="fn">slice</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="prop">jsonStart</span><span class="op">),</span> <span class="prop">content</span><span class="op">:</span> <span class="prop">rest</span><span class="op">.</span><span class="fn">slice</span><span class="op">(</span><span class="prop">jsonStart</span> <span class="op">+</span> <span class="num">1</span><span class="op">)</span> <span class="op">});</span>
+    <span class="op">}</span> <span class="kw">else if</span> <span class="op">(</span><span class="prop">type</span> <span class="op">===</span> <span class="str">'JJFS_MOVE'</span> <span class="op">||</span> <span class="prop">type</span> <span class="op">===</span> <span class="str">'JJFS_COPY'</span><span class="op">)</span> <span class="op">{</span>
+      <span class="kw">const</span> <span class="prop">lastColon</span> <span class="op">=</span> <span class="prop">rest</span><span class="op">.</span><span class="fn">lastIndexOf</span><span class="op">(</span><span class="str">':'</span><span class="op">);</span>
+      <span class="prop">actions</span><span class="op">.</span><span class="fn">push</span><span class="op">({</span> <span class="prop">type</span><span class="op">,</span>
+        <span class="prop">target</span><span class="op">:</span>  <span class="prop">lastColon</span> <span class="op">&gt;</span> <span class="op">-</span><span class="num">1</span> <span class="op">?</span> <span class="prop">rest</span><span class="op">.</span><span class="fn">slice</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="prop">lastColon</span><span class="op">)</span> <span class="op">:</span> <span class="prop">rest</span><span class="op">,</span>
+        <span class="prop">content</span><span class="op">:</span> <span class="prop">lastColon</span> <span class="op">&gt;</span> <span class="op">-</span><span class="num">1</span> <span class="op">?</span> <span class="prop">rest</span><span class="op">.</span><span class="fn">slice</span><span class="op">(</span><span class="prop">lastColon</span> <span class="op">+</span> <span class="num">1</span><span class="op">)</span> <span class="op">:</span> <span class="kw">null</span> <span class="op">});</span>
+    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+      <span class="kw">const</span> <span class="prop">firstColon</span> <span class="op">=</span> <span class="prop">rest</span><span class="op">.</span><span class="fn">indexOf</span><span class="op">(</span><span class="str">':'</span><span class="op">);</span>
+      <span class="prop">actions</span><span class="op">.</span><span class="fn">push</span><span class="op">({</span> <span class="prop">type</span><span class="op">,</span>
+        <span class="prop">target</span><span class="op">:</span>  <span class="prop">firstColon</span> <span class="op">&gt;</span> <span class="op">-</span><span class="num">1</span> <span class="op">?</span> <span class="prop">rest</span><span class="op">.</span><span class="fn">slice</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="prop">firstColon</span><span class="op">)</span> <span class="op">:</span> <span class="prop">rest</span><span class="op">,</span>
+        <span class="prop">content</span><span class="op">:</span> <span class="prop">firstColon</span> <span class="op">&gt;</span> <span class="op">-</span><span class="num">1</span> <span class="op">?</span> <span class="prop">rest</span><span class="op">.</span><span class="fn">slice</span><span class="op">(</span><span class="prop">firstColon</span> <span class="op">+</span> <span class="num">1</span><span class="op">)</span> <span class="op">:</span> <span class="kw">null</span> <span class="op">});</span>
+    <span class="op">}</span>
+  <span class="op">}</span>
+  <span class="kw">return</span> <span class="prop">actions</span><span class="op">;</span>
+<span class="op">}</span>
+
+<span class="kw">async function</span> <span class="fn">executeAction</span><span class="op">(</span><span class="prop">action</span><span class="op">,</span> <span class="prop">apiKey</span><span class="op">,</span> <span class="prop">baseUrl</span> <span class="op">=</span> <span class="str">''</span><span class="op">)</span> <span class="op">{</span>
+  <span class="kw">const</span> <span class="prop">resp</span> <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span><span class="op">(`${</span><span class="prop">baseUrl</span><span class="op">}</span><span class="str">/api/fs/execute`</span><span class="op">,</span> <span class="op">{</span>
+    <span class="prop">method</span><span class="op">:</span> <span class="str">'POST'</span><span class="op">,</span>
+    <span class="prop">headers</span><span class="op">:</span> <span class="op">{</span> <span class="str">'Content-Type'</span><span class="op">:</span> <span class="str">'application/json'</span><span class="op">,</span> <span class="str">'X-API-Key'</span><span class="op">:</span> <span class="prop">apiKey</span> <span class="op">},</span>
+    <span class="prop">body</span><span class="op">:</span> <span class="prop">JSON</span><span class="op">.</span><span class="fn">stringify</span><span class="op">(</span><span class="prop">action</span><span class="op">),</span>
+  <span class="op">});</span>
+  <span class="kw">return</span> <span class="prop">resp</span><span class="op">.</span><span class="fn">json</span><span class="op">();</span>
+<span class="op">}</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ DESIGN DECISIONS ═══════════════ -->
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Architecture</div>
+      <h2>Design Decisions</h2>
+    </div>
+    <div class="accordion" id="design-accordion">
+      <div class="acc-item open">
+        <button class="acc-trigger">
+          Why flat JSON instead of a database?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          JJFS is designed for AI workloads, not high-throughput production traffic. Zero setup, fully inspectable state, trivial backup. For high-write scenarios, swap the persistence layer (SQLite, Redis) while keeping the same <span class="inline-code">jjfs.js</span> functions.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          Why no Node.js dependency?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          <span class="inline-code">jjfs.js</span> runs in the browser (offline-first apps), embeds in any JS environment without adaptation, and decouples persistence strategy from data logic.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          Why tagged action syntax instead of tool calls?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          Works with any model that follows instructions — including local models via Ollama and models without structured tool-call support. Actions are visible in the response stream immediately, improving streaming UX.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          Why is JJFS_EDIT preferred over JJFS_WRITE?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          Writing an entire file to fix two lines is a blunt instrument. JJFS_EDIT makes intent explicit, limits blast radius (only the matched section is touched), and fails safely (nothing changed if search text is ambiguous).
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          Why do permission functions take the store as an argument?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          No globals, no hidden dependencies. Testing is trivial: pass a plain object, check the result. The same pattern applies to all four metadata stores.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          Why are owner IDs hashed in responses?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          Raw API keys must never appear in responses. All external permission responses use <span class="inline-code">hashPermForResponse(perm, hashFn)</span>. Callers identify themselves by computing <span class="inline-code">hashFn(theirKey)</span> and matching against hashed values. <span class="inline-code">hashFn</span> is provided by the caller to keep <span class="inline-code">jjfs.js</span> environment-agnostic.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ INTEGRATION CHECKLIST ═══════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">Checklist</div>
+      <h2>Integration Checklist</h2>
+    </div>
+    <div class="checklist-cols">
+      <div class="checklist-card">
+        <h3>Self-hosted</h3>
+        <ul>
+          <li>Copy <span class="inline-code">jjfs.js</span> into your project</li>
+          <li>Initialize all five stores from disk on startup: <span class="inline-code">wsForKey</span>, <span class="inline-code">fsPerms</span>, <span class="inline-code">fsTimestamps</span>, <span class="inline-code">fsSymlinks</span>, <span class="inline-code">fsXattrs</span></li>
+          <li>Wire <span class="inline-code">POST /api/fs/execute</span> using the dispatch pattern above</li>
+          <li>Apply the cascade pattern after delete and move</li>
+          <li>Use <span class="inline-code">touchTimestamps</span> after every mutation with the appropriate fields</li>
+          <li>Use <span class="inline-code">hashPermForResponse</span> before returning any permission data to clients</li>
+          <li>Add workspace management endpoints as needed</li>
+          <li>Add the frontend action parser to your streaming handler</li>
+          <li>Inject the AI System Prompt Template into your model's system prompt</li>
+          <li>Decide on persistence: JSON files for simple use, SQLite/Redis for multi-tenant</li>
+        </ul>
+      </div>
+      <div class="checklist-card" style="border-color:rgba(6,182,212,.25); background:rgba(6,182,212,.04);">
+        <h3>data2l.ink</h3>
+        <ul>
+          <li>Sign up at <a href="https://data2l.ink" target="_blank" rel="noopener">data2l.ink</a> and generate an API key</li>
+          <li>Add the frontend action parser to your app</li>
+          <li>Inject the AI System Prompt Template</li>
+          <li style="color:var(--cyan); font-weight:600;">Done — no server to run or maintain</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FAQ ═══════════════ -->
+<section class="section section-alt" id="faq">
+  <div class="container">
+    <div class="section-heading">
+      <div class="section-tag">FAQ</div>
+      <h2>Frequently Asked Questions</h2>
+    </div>
+    <div class="accordion" id="faq-accordion">
+      <div class="acc-item open">
+        <button class="acc-trigger">
+          Can JJFS handle binary files?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          Yes — use <span class="inline-code">jjfsWriteBinary</span> and <span class="inline-code">jjfsReadBinary</span>. They base64-encode your data transparently, storing it as a plain string in the workspace. Both work in Node.js (returns a <span class="inline-code">Buffer</span>) and in the browser (returns a <span class="inline-code">Uint8Array</span>) without any configuration.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          Can multiple users share a workspace?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          Yes — use the permission system. Set a mode on the workspace root (e.g. <span class="inline-code">"ro"</span>) and grant write access to specific API keys via an ACL object. The sticky bit (<span class="inline-code">"1755"</span>) on shared directories prevents users from deleting each other's files.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          What happens if two requests write simultaneously?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          Last write wins. There is no locking. For single-user or low-concurrency applications this is fine. For multi-user production use, replace JSON file persistence with SQLite (WAL mode) or a key-value store with compare-and-swap.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          Can the AI create workspaces?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          Not by default — workspace creation is a management operation. If you want the AI to create workspaces, expose a <span class="inline-code">WORKSPACE_CREATE</span> action in your execute handler.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          Is JJFS_EDIT safe with minified files?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          No. Minified files are typically a single long line, making a unique search string nearly impossible. Always keep non-minified source in JJFS workspaces.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          Can I use jjfs.js directly in the browser without a server?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          Yes. Import it via <span class="inline-code">&lt;script type="module"&gt;</span>, create your store objects in memory, and call the functions directly. Wire persistence to <span class="inline-code">localStorage</span>, <span class="inline-code">IndexedDB</span>, or a remote API as needed.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          Does JJFS support file watching?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          No. It is a synchronous, request-driven system. To notify your application when the AI writes a file, wrap the mutating functions with an event emitter or callback on your server layer.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          What does callerId = null mean?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          All access-check functions (<span class="inline-code">checkReadAccess</span>, <span class="inline-code">checkWriteAccess</span>, <span class="inline-code">checkOwnerAccess</span>, <span class="inline-code">checkStickyBit</span>) treat <span class="inline-code">null</span> as a trusted caller that bypasses all permission checks. Use this for server-side or session-authenticated operations where no API key is involved.
+        </div>
+      </div>
+      <div class="acc-item">
+        <button class="acc-trigger">
+          How do I read which permissions apply to a path?
+          <svg class="acc-arrow" viewBox="0 0 10 6" width="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </button>
+        <div class="acc-body">
+          Call <span class="inline-code">getEffectivePermission(fsPerms, email, wsName, filePath)</span>. The result includes <span class="inline-code">effectivePath</span> (where the permission was set) and <span class="inline-code">inherited: true</span> if the permission came from an ancestor path.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer>
+  <div class="container">
+    <a href="#" class="logo" style="text-decoration:none; justify-content:center; margin-bottom:1rem;">
+      <svg class="logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <circle cx="256" cy="256" r="200" fill="black"/>
+        <circle cx="256" cy="256" r="210" stroke="#0CE4FF" stroke-width="18" fill="none"/>
+        <path d="M256 256 m-120 0 a120 120 0 1 1 240 0 a90 90 0 1 0 -180 0 a60 60 0 1 1 120 0 a30 30 0 1 0 -60 0" stroke="#FFD400" stroke-width="22" stroke-linecap="round" fill="none"/>
+        <text x="256" y="355" text-anchor="middle" font-family="monospace" font-size="96" font-weight="900" letter-spacing="10" fill="#0CE4FF">JJFS</text>
+      </svg>
+      <span class="jj">jjfs</span><span class="js-ext">.dev</span>
+    </a>
+    <p>jjfs.dev is released into the public domain. Use it, fork it, adapt it, ship products with it. No attribution required.</p>
+    <div class="footer-links" style="margin-top:1.25rem;">
+      <a href="https://github.com/fusionpoweredsoftware/data2l-ink" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://data2l.ink" target="_blank" rel="noopener">data2l.ink</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ── TABS ──
+  function initTabs(navId) {
+    const nav = document.getElementById(navId);
+    if (!nav) return;
+    nav.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabId = btn.dataset.tab;
+        nav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        // find sibling tab panels
+        const container = nav.parentElement;
+        container.querySelectorAll('.tab-panel').forEach(p => {
+          p.classList.toggle('active', p.id === tabId);
+        });
+      });
+    });
+  }
+  initTabs('gs-tabs-nav');
+  initTabs('api-tabs-nav');
+
+  // ── ACCORDION ──
+  function initAccordion(id) {
+    const acc = document.getElementById(id);
+    if (!acc) return;
+    acc.querySelectorAll('.acc-trigger').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.closest('.acc-item');
+        const wasOpen = item.classList.contains('open');
+        item.classList.toggle('open', !wasOpen);
+      });
+    });
+  }
+  initAccordion('design-accordion');
+  initAccordion('faq-accordion');
+
+  // ── COPY PROMPT ──
+  function copyPrompt() {
+    const text = document.getElementById('system-prompt-text').textContent;
+    const btn = document.getElementById('copy-prompt-btn');
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(() => {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
