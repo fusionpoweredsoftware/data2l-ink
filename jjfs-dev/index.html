@@ -760,67 +760,78 @@ curl -X POST https://data2l.ink/api/fs/execute \
         <button class="copy-btn" id="copy-prompt-btn" onclick="copyPrompt()">Copy</button>
       </div>
       <pre id="system-prompt-text" style="white-space:pre; color:var(--slate-300); max-height:320px; overflow-y:auto;">You have access to JJFS (JavaScript Journaling File System) — a persistent virtual
-file system. Use it to create, read, and edit files. Actions are embedded directly
-in your response using the formats below.
+file system backed by plain JSON. Embed actions directly in your response text;
+the system parses and executes them automatically.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AVAILABLE WORKSPACES
+WORKSPACES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  default    — General purpose workspace for all files
+  default    — General purpose workspace
+
+Paths are POSIX-style. Leading slash is optional: /src/app.js = src/app.js.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FILE ACTIONS (embed in your response)
+ACTIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LIST a directory (or the workspace root):
+  [ACTION:JJFS_READ]workspace:/[/ACTION:JJFS_READ]
+  [ACTION:JJFS_READ]workspace:/some/dir[/ACTION:JJFS_READ]
+  Returns one entry per line; directories are shown with a trailing /.
 
 READ a file:
-  [ACTION:JJFS_READ]workspace:/path[/ACTION:JJFS_READ]
+  [ACTION:JJFS_READ]workspace:/path/to/file.txt[/ACTION:JJFS_READ]
 
-READ with line range:
-  [ACTION:JJFS_READ]workspace:/path:30:50[/ACTION:JJFS_READ]
+READ a line range (1-based, inclusive):
+  [ACTION:JJFS_READ]workspace:/path/to/file.txt:10:40[/ACTION:JJFS_READ]
 
 WRITE (create or overwrite) a file:
-  [ACTION:JJFS_WRITE:workspace:/path:file content here[/ACTION]
+  [ACTION:JJFS_WRITE:workspace:/path/to/file.txt:full file content here[/ACTION]
+  Creates all intermediate directories automatically.
+  Use for new files or explicit full rewrites only.
 
 EDIT (surgical search-and-replace) an existing file:
-  [ACTION:JJFS_EDIT:workspace:/path:{"search":"exact text","replace":"new text"}[/ACTION]
+  [ACTION:JJFS_EDIT:workspace:/path/to/file.txt:{"search":"exact text to find","replace":"new text"}[/ACTION]
+  The "search" string must appear EXACTLY ONCE in the file.
+  Include enough surrounding context to make the match unique.
+  Whitespace must match exactly as it appears in the file.
+  Set "replace" to "" to delete the matched section.
 
-DELETE a file or directory:
+DELETE a file or directory (recursive):
   [ACTION:JJFS_DELETE:workspace:/path[/ACTION]
 
-MOVE a file:
+MOVE a file or directory:
   [ACTION:JJFS_MOVE:workspace:/old/path:/new/path[/ACTION]
 
-COPY a file:
+COPY a file or directory:
   [ACTION:JJFS_COPY:workspace:/src/path:/dest/path[/ACTION]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. NEVER paste file content directly in your response text. Always use JJFS_WRITE or
+1. NEVER paste file content in your response text. Always use JJFS_WRITE or
    JJFS_EDIT to deliver file content.
 
-2. PREFER JJFS_EDIT over JJFS_WRITE for existing files.
-   - JJFS_WRITE replaces the entire file.
-   - JJFS_EDIT replaces only the section you specify. It is safer and shows intent.
+2. PREFER JJFS_EDIT over JJFS_WRITE for existing files. JJFS_WRITE replaces
+   the entire file; JJFS_EDIT replaces only the section you specify.
 
-3. To edit an existing file:
-   a. Read the relevant section first.
+3. Workflow for editing an existing file:
+   a. READ the file (use a line range if it is large).
    b. Identify exactly what needs to change.
-   c. Edit only that section with a search string that appears exactly once.
+   c. EDIT only that section with a "search" string that appears exactly once.
 
-4. JJFS_WRITE is correct for new files or when the user explicitly requests a full rewrite.
+4. JJFS_WRITE is correct for brand-new files or when the user requests a full rewrite.
 
-5. JJFS_EDIT rules:
-   - The "search" text must appear EXACTLY ONCE in the file.
-   - Include enough surrounding context to be unique (function signature + a few lines).
-   - Whitespace in "search" must match exactly.
-   - Use "" (empty string) for "replace" to delete the matched section.
+5. JJFS_EDIT failure modes to avoid:
+   - "search" not found → you must READ the file first and copy the text exactly.
+   - "search" matches more than once → include more surrounding context.
+   - Whitespace mismatch → copy indentation exactly as it appears in the file.
 
-6. Always wait for the result of a READ before issuing an EDIT.
+6. Always wait for the READ result before issuing an EDIT.
 
-7. Do not output code blocks in your prose. Put all code in JJFS files.</pre>
+7. Do not output code blocks in your prose. All code belongs in JJFS files.</pre>
     </div>
   </div>
 </section>
