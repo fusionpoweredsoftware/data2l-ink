@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { jjfsNavigate, parseTarget, countFiles, jjfsRead, jjfsWrite, jjfsEdit, jjfsDelete, jjfsMove, jjfsCopy, normalizePath, isValidMode, parseOctalBits, getStickyBit, getEffectivePermission, getPermBitsForKey, checkWriteAccess, checkReadAccess, checkOwnerAccess, checkStickyBit, setPermission, removePermissionsUnder, jjfsChmod, jjfsChown, touchTimestamps, getTimestamps, removeTimestampsUnder, resolveSymlink, getSymlinksInDir, removeSymlinksUnder, XATTR_NAME_RE, getXattrs, removeXattrsUnder, hashPermForResponse } from './jjfs.js';
+import { jjfsNavigate, parseTarget, countFiles, jjfsRead, jjfsWrite, jjfsEdit, jjfsDelete, jjfsMove, jjfsCopy, normalizePath, getEffectivePermission, checkWriteAccess, checkReadAccess, checkOwnerAccess, checkStickyBit, removePermissionsUnder, jjfsChmod, jjfsChown, touchTimestamps, getTimestamps, removeTimestampsUnder, resolveSymlink, getSymlinksInDir, removeSymlinksUnder, jjfsSetSymlink, getXattrs, removeXattrsUnder, jjfsSetXattr, hashPermForResponse } from './jjfs.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -569,12 +569,9 @@ async function handleRequest(req, res) {
           if (!content) return json(res, 400, { error: 'content (target path) is required for JJFS_SYMLINK' });
           const ww = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!ww.allowed) return json(res, 403, { error: ww.error });
-          const targetPath = normalizePath(String(content));
-          if (!fsSymlinks[email]) fsSymlinks[email] = {};
-          fsSymlinks[email][`${wsName}:${filePath}`] = targetPath;
+          result = jjfsSetSymlink(fsSymlinks, email, wsName, filePath, content);
           touchTimestamps(fsTimestamps, email, wsName, filePath, ['birthtime', 'mtime', 'ctime']);
           saveSymlinks(); saveTimestamps();
-          result = { success: true, result: `Symlink created: ${wsName}:${filePath} -> ${targetPath}` };
           break;
         }
 
@@ -589,20 +586,8 @@ async function handleRequest(req, res) {
           let xop;
           try { xop = typeof content === 'string' ? JSON.parse(content) : content; }
           catch { return json(res, 400, { error: 'content must be JSON { set: {...}, remove: [...] }' }); }
-          const xkey = `${wsName}:${filePath}`;
-          if (!fsXattrs[email]) fsXattrs[email] = {};
-          if (!fsXattrs[email][xkey]) fsXattrs[email][xkey] = {};
-          if (xop.set) {
-            for (const [k, v] of Object.entries(xop.set)) {
-              if (!XATTR_NAME_RE.test(k))
-                return json(res, 400, { error: `Invalid xattr name: "${k}". Must match user.* or trusted.*` });
-              fsXattrs[email][xkey][k] = String(v);
-            }
-          }
-          if (xop.remove) {
-            for (const k of [].concat(xop.remove)) delete fsXattrs[email][xkey][k];
-          }
-          if (Object.keys(fsXattrs[email][xkey]).length === 0) delete fsXattrs[email][xkey];
+          const xr = jjfsSetXattr(fsXattrs, email, wsName, filePath, xop);
+          if (!xr.success) return json(res, xr.status, { error: xr.result });
           touchTimestamps(fsTimestamps, email, wsName, filePath, ['ctime']);
           saveXattrs(); saveTimestamps();
           result = { success: true, result: getXattrs(fsXattrs, email, wsName, filePath) };
@@ -894,14 +879,7 @@ async function handleRequest(req, res) {
         if (symlink !== undefined) {
           const wc = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!wc.allowed) return json(res, 403, { error: wc.error });
-          if (!symlink) {
-            // Remove symlink
-            if (fsSymlinks[email]) delete fsSymlinks[email][`${wsName}:${filePath}`];
-          } else {
-            const targetPath = normalizePath(String(symlink));
-            if (!fsSymlinks[email]) fsSymlinks[email] = {};
-            fsSymlinks[email][`${wsName}:${filePath}`] = targetPath;
-          }
+          jjfsSetSymlink(fsSymlinks, email, wsName, filePath, symlink || null);
           touchTimestamps(fsTimestamps, email, wsName, filePath, ['mtime', 'ctime']);
           saveSymlinks(); saveTimestamps();
           return json(res, 200, {
@@ -913,20 +891,8 @@ async function handleRequest(req, res) {
         if (xattr !== undefined) {
           const wc = checkWriteAccess(fsPermissions, email, wsName, filePath, apiKeyString);
           if (!wc.allowed) return json(res, 403, { error: wc.error });
-          const xkey = `${wsName}:${filePath}`;
-          if (!fsXattrs[email]) fsXattrs[email] = {};
-          if (!fsXattrs[email][xkey]) fsXattrs[email][xkey] = {};
-          if (xattr.set) {
-            for (const [k, v] of Object.entries(xattr.set)) {
-              if (!XATTR_NAME_RE.test(k))
-                return json(res, 400, { error: `Invalid xattr name: "${k}". Must match user.* or trusted.*` });
-              fsXattrs[email][xkey][k] = String(v);
-            }
-          }
-          if (xattr.remove) {
-            for (const k of [].concat(xattr.remove)) delete fsXattrs[email][xkey][k];
-          }
-          if (Object.keys(fsXattrs[email][xkey]).length === 0) delete fsXattrs[email][xkey];
+          const xr = jjfsSetXattr(fsXattrs, email, wsName, filePath, xattr);
+          if (!xr.success) return json(res, xr.status, { error: xr.result });
           touchTimestamps(fsTimestamps, email, wsName, filePath, ['ctime']);
           saveXattrs(); saveTimestamps();
           return json(res, 200, { success: true, workspace: wsName, path: filePath, xattrs: getXattrs(fsXattrs, email, wsName, filePath) });

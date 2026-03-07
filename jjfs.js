@@ -447,6 +447,20 @@ export function removeSymlinksUnder(fsSymlinks, email, wsName, filePath) {
   }
 }
 
+// Create or remove a single symlink. Pass null/empty target to remove.
+// Does NOT handle persistence — caller must save and update timestamps.
+export function jjfsSetSymlink(fsSymlinks, email, wsName, filePath, target) {
+  const key = `${wsName}:${normalizePath(filePath)}`;
+  if (!target) {
+    if (fsSymlinks[email]) delete fsSymlinks[email][key];
+    return { success: true, result: `Symlink removed: ${wsName}:${filePath}` };
+  }
+  const targetPath = normalizePath(String(target));
+  if (!fsSymlinks[email]) fsSymlinks[email] = {};
+  fsSymlinks[email][key] = targetPath;
+  return { success: true, result: `Symlink created: ${wsName}:${filePath} -> ${targetPath}` };
+}
+
 // ── JJFS Extended Attributes ──────────────────────────────────────────
 // Extended attributes follow the Linux xattr namespace convention. Only
 // "user.*" and "trusted.*" namespaces are supported. Values are strings.
@@ -468,6 +482,27 @@ export function removeXattrsUnder(fsXattrs, email, wsName, filePath) {
   for (const k of Object.keys(fsXattrs[email])) {
     if (k === prefix || k.startsWith(prefix + '/')) delete fsXattrs[email][k];
   }
+}
+
+// Apply an xattr operation { set?: { name: value }, remove?: string | string[] } to a path.
+// Returns { success: false, status: 400, result } on invalid name, { success: true, status: 200 } otherwise.
+// Does NOT handle persistence — caller must save and update timestamps.
+export function jjfsSetXattr(fsXattrs, email, wsName, filePath, op) {
+  const key = `${wsName}:${normalizePath(filePath)}`;
+  if (!fsXattrs[email]) fsXattrs[email] = {};
+  if (!fsXattrs[email][key]) fsXattrs[email][key] = {};
+  if (op.set) {
+    for (const [k, v] of Object.entries(op.set)) {
+      if (!XATTR_NAME_RE.test(k))
+        return { success: false, status: 400, result: `Invalid xattr name: "${k}". Must match user.* or trusted.*` };
+      fsXattrs[email][key][k] = String(v);
+    }
+  }
+  if (op.remove) {
+    for (const k of [].concat(op.remove)) delete fsXattrs[email][key][k];
+  }
+  if (Object.keys(fsXattrs[email][key]).length === 0) delete fsXattrs[email][key];
+  return { success: true, status: 200, result: `xattrs updated: ${wsName}:${filePath}` };
 }
 
 // ── JJFS Permission Serialization ─────────────────────────────────────
