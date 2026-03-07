@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#6C63FF"/>
+    </linearGradient>
+  </defs>
+  <!-- black interior -->
+  <circle cx="256" cy="256" r="200" fill="black"/>
+  <!-- outer ring -->
+  <circle cx="256" cy="256" r="210" stroke="url(#g)" stroke-width="18" fill="none"/>
+  <!-- journal spiral -->
+  <path d="
+    M256 256
+    m-120 0
+    a120 120 0 1 1 240 0
+    a90 90 0 1 0 -180 0
+    a60 60 0 1 1 120 0
+    a30 30 0 1 0 -60 0
+  " stroke="url(#g)" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <!-- transaction ticks -->
+  <g stroke="white" stroke-width="6" opacity="0.9">
+    <line x1="256" y1="36" x2="256" y2="70"/>
+    <line x1="256" y1="442" x2="256" y2="476"/>
+    <line x1="36" y1="256" x2="70" y2="256"/>
+    <line x1="442" y1="256" x2="476" y2="256"/>
+  </g>
+  <!-- commit node -->
+  <circle cx="256" cy="256" r="10" fill="white"/>
+  <!-- JJFS -->
+  <text x="256" y="355"
+        text-anchor="middle"
+        font-family="monospace"
+        font-size="96"
+        letter-spacing="10"
+        fill="white">
+    JJFS
+  </text>
+</svg>
