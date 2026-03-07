@@ -7,7 +7,7 @@
     </linearGradient>
   </defs>
   <!-- black interior -->
-  <circle cx="256" cy="256" r="200" fill="black"/>
+  <circle cx="256" cy="256" r="200" fill="#00E5FF"/>
   <!-- outer ring -->
   <circle cx="256" cy="256" r="210" stroke="url(#g)" stroke-width="18" fill="none"/>
   <!-- journal spiral now yellow -->
@@ -31,7 +31,7 @@
         font-family="monospace"
         font-size="96"
         letter-spacing="10"
-        fill="white">
+        fill="#00E5FF">
     JJFS
   </text>
 </svg>
