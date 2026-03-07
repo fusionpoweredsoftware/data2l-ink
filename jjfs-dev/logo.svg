@@ -8,19 +8,13 @@
     a90 90 0 1 0 -180 0
     a60 60 0 1 1 120 0
     a30 30 0 1 0 -60 0
-  " stroke="#FFD400" stroke-width="12" stroke-linecap="round" fill="none"/>
-  <g stroke="white" stroke-width="6" opacity="0.9">
-    <line x1="256" y1="36" x2="256" y2="70"/>
-    <line x1="256" y1="442" x2="256" y2="476"/>
-    <line x1="36" y1="256" x2="70" y2="256"/>
-    <line x1="442" y1="256" x2="476" y2="256"/>
-  </g>
-  <circle cx="256" cy="256" r="10" fill="white"/>
+  " stroke="#FFD400" stroke-width="22" stroke-linecap="round" fill="none"/>
   <text x="256"
         y="355"
         text-anchor="middle"
         font-family="monospace"
         font-size="96"
+        font-weight="900"
         letter-spacing="10"
         fill="#0CE4FF">
     JJFS
